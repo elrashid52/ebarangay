@@ -1641,6 +1641,27 @@ body {
     box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
 }
 
+.resubmit-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+}
+
+.resubmit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+}
+
 .detail-actions {
     display: flex;
     gap: 12px;

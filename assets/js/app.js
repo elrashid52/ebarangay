@@ -194,9 +194,9 @@ function initializeEventListeners() {
     }
 
     // Reupload form
-    const reuploadForm = document.getElementById('reuploadForm');
-    if (reuploadForm) {
-        reuploadForm.addEventListener('submit', handleReuploadSubmit);
+    const resubmitForm = document.getElementById('resubmitForm');
+    if (resubmitForm) {
+        resubmitForm.addEventListener('submit', handleResubmitSubmit);
     }
 
     // Status filter
@@ -513,7 +513,7 @@ function displayRequestsTable(requests) {
                     ${request.status === 'ready_for_pickup' ? 
                         `<button class="action-btn view" onclick="viewDocument(${request.id})" title="View">👁️</button>` : ''}
                     ${request.status === 'rejected' && request.can_reupload ? 
-                        `<button class="action-btn reupload" onclick="openReuploadModal(${request.id})" title="Resubmit">🔄</button>` : ''}
+                        `<button class="action-btn reupload" onclick="openResubmitModal(${request.id})" title="Resubmit">🔄</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -1045,21 +1045,98 @@ function openCertificateRequestModal() {
     showPage('certificate');
 }
 
-function openReuploadModal(requestId) {
-    document.getElementById('reuploadRequestId').value = requestId;
-    document.getElementById('reuploadModal').style.display = 'flex';
+// Resubmit modal functions
+function openResubmitModal(requestId) {
+    document.getElementById('resubmitRequestId').value = requestId;
+    document.getElementById('resubmitModal').style.display = 'flex';
+    
+    // Reset form
+    document.getElementById('resubmitForm').reset();
+    resetResubmitUploads();
 }
 
-function closeReuploadModal() {
-    document.getElementById('reuploadModal').style.display = 'none';
-    document.getElementById('reuploadForm').reset();
+function closeResubmitModal() {
+    document.getElementById('resubmitModal').style.display = 'none';
+    document.getElementById('resubmitForm').reset();
+    resetResubmitUploads();
 }
 
-async function handleReuploadSubmit(e) {
+function resetResubmitUploads() {
+    const uploadAreas = document.querySelectorAll('#resubmitDocuments .file-upload-area');
+    uploadAreas.forEach(area => {
+        const placeholder = area.querySelector('.upload-placeholder');
+        const success = area.querySelector('.upload-success');
+        
+        if (placeholder) placeholder.style.display = 'flex';
+        if (success) success.style.display = 'none';
+        
+        area.parentElement.classList.remove('uploaded');
+    });
+}
+
+function handleResubmitFileUpload(input, documentType) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        showMessage('File size must be less than 5MB', 'error');
+        input.value = '';
+        return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+        showMessage('Only PDF, JPG, and PNG files are allowed', 'error');
+        input.value = '';
+        return;
+    }
+    
+    // Update UI to show uploaded file
+    const uploadGroup = input.closest('.document-upload-group');
+    const uploadArea = uploadGroup.querySelector('.file-upload-area');
+    
+    uploadArea.innerHTML = `
+        <div class="upload-success">
+            <div class="success-icon">✅</div>
+            <div class="success-text">
+                <div class="success-title">Document uploaded</div>
+                <div class="success-filename">${file.name}</div>
+            </div>
+        </div>
+    `;
+    
+    uploadGroup.classList.add('uploaded');
+}
+
+async function handleResubmitSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
     formData.append('action', 'reupload_request');
+    
+    // Validate required fields
+    const purpose = formData.get('purpose');
+    if (!purpose.trim()) {
+        showMessage('Purpose is required', 'error');
+        return;
+    }
+    
+    // Check if at least one document is uploaded
+    const validId = formData.get('valid_id');
+    const proofBilling = formData.get('proof_billing');
+    
+    if (!validId || !validId.size || !proofBilling || !proofBilling.size) {
+        showMessage('Please upload all required documents', 'error');
+        return;
+    }
+    
+    // Disable submit button
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Resubmitting...';
     
     try {
         const response = await fetch('api/requests.php', {
@@ -1071,15 +1148,31 @@ async function handleReuploadSubmit(e) {
         
         if (data.success) {
             showMessage('Request resubmitted successfully!', 'success');
-            closeReuploadModal();
-            loadRequestsData();
+            closeResubmitModal();
+            loadRequestsData(); // Refresh the requests table
         } else {
-            showMessage(data.message, 'error');
+            showMessage(data.message || 'Failed to resubmit request', 'error');
         }
     } catch (error) {
-        console.error('Reupload failed:', error);
-        showMessage('Failed to resubmit request', 'error');
+        console.error('Resubmit failed:', error);
+        showMessage('Failed to resubmit request. Please try again.', 'error');
+    } finally {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
     }
+}
+
+function openReuploadModal(requestId) {
+    openResubmitModal(requestId);
+}
+
+function closeReuploadModal() {
+    closeResubmitModal();
+}
+
+async function handleReuploadSubmit(e) {
+    return handleResubmitSubmit(e);
 }
 
 // Request details modal
@@ -1134,6 +1227,24 @@ function showRequestDetailsModal(request) {
     const rejectionSection = document.getElementById('detailRejectionSection');
     if (request.status === 'rejected') {
         document.getElementById('detailRejectionMessage').textContent = request.admin_notes || 'No specific reason provided.';
+        
+        // Add resubmit button if allowed
+        const existingResubmitBtn = rejectionSection.querySelector('.resubmit-btn');
+        if (existingResubmitBtn) {
+            existingResubmitBtn.remove();
+        }
+        
+        if (request.can_reupload) {
+            const resubmitBtn = document.createElement('button');
+            resubmitBtn.className = 'resubmit-btn';
+            resubmitBtn.innerHTML = '🔄 Resubmit Request';
+            resubmitBtn.onclick = () => {
+                closeRequestDetailsModal();
+                openResubmitModal(request.id);
+            };
+            rejectionSection.appendChild(resubmitBtn);
+        }
+        
         rejectionSection.style.display = 'block';
     } else {
         rejectionSection.style.display = 'none';
