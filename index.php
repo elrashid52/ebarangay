@@ -845,6 +845,69 @@
         </div>
     </div>
 
+    <!-- Resubmit Request Modal -->
+    <div id="resubmitModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📤 Resubmit Request</h2>
+                <button class="modal-close" onclick="closeResubmitModal()">✕</button>
+            </div>
+            <form id="resubmitForm">
+                <input type="hidden" id="resubmitRequestId" name="request_id">
+                
+                <div class="form-group">
+                    <label for="resubmitPurpose">Purpose *</label>
+                    <textarea id="resubmitPurpose" name="purpose" placeholder="Please specify the purpose of this certificate request..." required rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="resubmitNotes">Additional Notes</label>
+                    <textarea id="resubmitNotes" name="additional_notes" placeholder="Any additional information or corrections..." rows="3"></textarea>
+                </div>
+                
+                <div class="form-section">
+                    <h4>📋 Upload Required Documents</h4>
+                    <p style="color: #6b7280; margin-bottom: 20px;">Please upload all required documents again. Make sure they are clear and valid.</p>
+                    
+                    <div class="document-uploads" id="resubmitDocuments">
+                        <div class="document-upload-group">
+                            <label for="resubmit_valid_id">Valid Government-issued ID *</label>
+                            <div class="file-upload-area" onclick="document.getElementById('resubmit_valid_id').click()">
+                                <div class="upload-placeholder">
+                                    <div class="upload-icon">📁</div>
+                                    <div class="upload-text">
+                                        <div class="upload-title">Click to upload Valid ID</div>
+                                        <div class="upload-subtitle">PDF, JPG, PNG (Max 5MB)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="resubmit_valid_id" name="valid_id" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" onchange="handleResubmitFileUpload(this, 'valid_id')">
+                        </div>
+                        
+                        <div class="document-upload-group">
+                            <label for="resubmit_proof_billing">Proof of Billing / Proof of Residency *</label>
+                            <div class="file-upload-area" onclick="document.getElementById('resubmit_proof_billing').click()">
+                                <div class="upload-placeholder">
+                                    <div class="upload-icon">📁</div>
+                                    <div class="upload-text">
+                                        <div class="upload-title">Click to upload Proof of Billing</div>
+                                        <div class="upload-subtitle">PDF, JPG, PNG (Max 5MB)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="resubmit_proof_billing" name="proof_billing" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" onchange="handleResubmitFileUpload(this, 'proof_billing')">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeResubmitModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">🚀 Resubmit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="assets/js/app.js"></script>
 </body>
 </html>
