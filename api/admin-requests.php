@@ -188,6 +188,15 @@ switch($action) {
                 if($documentPath) {
                     $message .= ' and certificate uploaded';
                 }
+                
+                // If rejecting, enable reupload capability
+                if($status === 'rejected') {
+                    $reuploadQuery = "UPDATE requests SET can_reupload = 1 WHERE id = :id";
+                    $reuploadStmt = $db->prepare($reuploadQuery);
+                    $reuploadStmt->bindParam(':id', $id);
+                    $reuploadStmt->execute();
+                }
+                
                 echo json_encode(['success' => true, 'message' => $message]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Failed to update request']);

@@ -254,6 +254,7 @@ switch($action) {
     case 'reupload_request':
         $request_id = $_POST['request_id'] ?? '';
         $purpose = $_POST['purpose'] ?? '';
+        $additional_notes = $_POST['additional_notes'] ?? '';
         
         if(empty($request_id) || empty($purpose)) {
             echo json_encode(['success' => false, 'message' => 'Request ID and purpose are required']);
@@ -275,17 +276,61 @@ switch($action) {
             exit;
         }
         
+        // Handle document uploads for resubmission
+        $uploadedDocuments = [];
+        $uploadDir = '../uploads/requests/';
+        
+        // Create directory if it doesn't exist
+        if(!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        // Process uploaded files
+        foreach($_FILES as $fieldName => $file) {
+            if($file['error'] === UPLOAD_ERR_OK) {
+                // Validate file
+                $allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+                if(!in_array($file['type'], $allowedTypes)) {
+                    echo json_encode(['success' => false, 'message' => 'Only PDF, JPG, and PNG files are allowed']);
+                    exit;
+                }
+                
+                if($file['size'] > 5 * 1024 * 1024) {
+                    echo json_encode(['success' => false, 'message' => 'File size must be less than 5MB']);
+                    exit;
+                }
+                
+                // Generate unique filename
+                $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = $fieldName . '_' . $resident_id . '_' . time() . '.' . $extension;
+                $filepath = $uploadDir . $filename;
+                
+                if(move_uploaded_file($file['tmp_name'], $filepath)) {
+                    $uploadedDocuments[$fieldName] = $filename;
+                }
+            }
+        }
+        
+        // Update request details with new documents
+        $requestDetails = [
+            'uploaded_documents' => $uploadedDocuments,
+            'additional_notes' => $additional_notes,
+            'resubmission_date' => date('Y-m-d H:i:s')
+        ];
+        
         // Update the request
         $updateQuery = "UPDATE requests SET purpose = :purpose, status = 'pending', 
-                        admin_notes = NULL, updated_at = CURRENT_TIMESTAMP 
+                        admin_notes = NULL, updated_at = CURRENT_TIMESTAMP,
+                        request_details = :request_details, can_reupload = 0
                         WHERE id = :request_id AND resident_id = :resident_id";
         $updateStmt = $db->prepare($updateQuery);
         $updateStmt->bindParam(':purpose', $purpose);
+        $updateStmt->bindParam(':request_details', json_encode($requestDetails));
         $updateStmt->bindParam(':request_id', $request_id);
         $updateStmt->bindParam(':resident_id', $resident_id);
         
         if($updateStmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Request resubmitted successfully']);
+            echo json_encode(['success' => true, 'message' => 'Request resubmitted successfully with new documents']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to resubmit request']);
         }
