@@ -201,7 +201,6 @@
 +        console.error('Failed to view document:', error);
 +        showMessage('Failed to view document', 'error');
 +    }
-+
-}}
++}
 +
  function showRequestDetailsModal(request) {
