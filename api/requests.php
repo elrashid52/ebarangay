@@ -88,6 +88,7 @@ switch($action) {
     case 'create_certificate_request':
         // Add debug logging
         error_log("Certificate request received: " . print_r($_POST, true));
+        error_log("Files received: " . print_r($_FILES, true));
         
         $certificate_type = $_POST['certificate_type'] ?? '';
         $purpose = $_POST['purpose'] ?? '';
@@ -100,13 +101,46 @@ switch($action) {
             exit;
         }
         
-        // For now, let's use a simple approach without complex file uploads
-        // We'll store the request details as JSON
+        // Handle document uploads
+        $uploadedDocuments = [];
+        $uploadDir = '../uploads/requests/';
+        
+        // Create directory if it doesn't exist
+        if(!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        // Process uploaded files
+        foreach($_FILES as $fieldName => $file) {
+            if($file['error'] === UPLOAD_ERR_OK) {
+                // Validate file
+                $allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+                if(!in_array($file['type'], $allowedTypes)) {
+                    echo json_encode(['success' => false, 'message' => 'Only PDF, JPG, and PNG files are allowed']);
+                    exit;
+                }
+                
+                if($file['size'] > 5 * 1024 * 1024) {
+                    echo json_encode(['success' => false, 'message' => 'File size must be less than 5MB']);
+                    exit;
+                }
+                
+                // Generate unique filename
+                $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = $fieldName . '_' . $resident_id . '_' . time() . '.' . $extension;
+                $filepath = $uploadDir . $filename;
+                
+                if(move_uploaded_file($file['tmp_name'], $filepath)) {
+                    $uploadedDocuments[$fieldName] = $filename;
+                }
+            }
+        }
+        
         $requestDetails = [
             'payment_method' => $payment_method,
             'payment_reference' => $payment_reference,
             'additional_notes' => $additional_notes,
-            'uploaded_documents' => [] // We'll handle file uploads later
+            'uploaded_documents' => $uploadedDocuments
         ];
         
         // Set processing fee based on certificate type
@@ -193,61 +227,52 @@ switch($action) {
         
     case 'view_document':
         $request_id = $_GET['request_id'] ?? '';
+        $document_type = $_GET['document_type'] ?? '';
         
         if(empty($request_id)) {
             echo json_encode(['success' => false, 'message' => 'Request ID is required']);
             exit;
         }
         
-        // Verify the request belongs to the current resident and is ready for viewing
-        $query = "SELECT document_path, type, status FROM requests 
-                  WHERE id = :request_id AND resident_id = :resident_id AND status IN ('approved', 'ready_for_pickup')";
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(':request_id', $request_id);
-        $stmt->bindParam(':resident_id', $resident_id);
-        $stmt->execute();
-        
-        $requestData = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if(!$requestData) {
-            echo json_encode(['success' => false, 'message' => 'Request not found or not ready']);
-            exit;
-        }
-        
-        // For Barangay ID, return image for viewing
-        if(stripos($requestData['type'], 'barangay id') !== false) {
-            $imagePath = '../uploads/barangay_ids/' . $requestData['document_path'];
+        try {
+            // Verify the request exists and get details
+            $query = "SELECT request_details, resident_id FROM requests WHERE id = :id";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(':id', $request_id);
+            $stmt->execute();
             
-            if(!file_exists($imagePath)) {
-                // Return error if file doesn't exist
-                echo json_encode(['success' => false, 'message' => 'Barangay ID image not found']);
+            if($stmt->rowCount() > 0) {
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                $details = json_decode($row['request_details'], true);
+                
+                if(isset($details['uploaded_documents'][$document_type])) {
+                    $filename = $details['uploaded_documents'][$document_type];
+                    $filepath = '../uploads/requests/' . $filename;
+                    
+                    if(file_exists($filepath)) {
+                        // Determine content type
+                        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                        $contentType = finfo_file($finfo, $filepath);
+                        finfo_close($finfo);
+                        
+                        header('Content-Type: ' . $contentType);
+                        header('Content-Disposition: inline; filename="' . $filename . '"');
+                        readfile($filepath);
+                        exit;
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'File not found on server']);
+                        exit;
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Document type not found in request']);
+                    exit;
+                }
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Request not found']);
                 exit;
             }
-            
-            // Set headers for image viewing
-            $imageInfo = getimagesize($imagePath);
-            header('Content-Type: ' . $imageInfo['mime']);
-            header('Content-Disposition: inline; filename="barangay_id_' . $request_id . '.jpg"');
-            
-            // Output image
-            readfile($imagePath);
-            exit;
-        } else {
-            // For other documents, handle as PDF
-            $filePath = '../uploads/certificates/' . $requestData['document_path'];
-            
-            if(!file_exists($filePath)) {
-                echo json_encode(['success' => false, 'message' => 'Document file not found']);
-                exit;
-            }
-            
-            // Set headers for file viewing
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . $requestData['type'] . '_' . date('Y-m-d') . '.pdf"');
-            
-            // Output file
-            readfile($filePath);
-            exit;
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error viewing document: ' . $e->getMessage()]);
         }
         break;
         

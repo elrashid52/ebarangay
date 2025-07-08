@@ -247,7 +247,14 @@ switch($action) {
         $documentType = $_GET['document_type'] ?? '';
         
         if(empty($requestId)) {
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Request ID is required']);
+            exit;
+        }
+        
+        if(empty($documentType)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Document type is required']);
             exit;
         }
         
@@ -262,9 +269,14 @@ switch($action) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 $details = json_decode($row['request_details'], true);
                 
+                error_log("Request details: " . print_r($details, true));
+                error_log("Looking for document type: " . $documentType);
+                
                 if(isset($details['uploaded_documents'][$documentType])) {
                     $filename = $details['uploaded_documents'][$documentType];
                     $filepath = '../uploads/requests/' . $filename;
+                    
+                    error_log("Looking for file: " . $filepath);
                     
                     if(file_exists($filepath)) {
                         // Determine content type
@@ -276,13 +288,24 @@ switch($action) {
                         header('Content-Disposition: inline; filename="' . $filename . '"');
                         readfile($filepath);
                         exit;
+                    } else {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'message' => 'File not found: ' . $filepath]);
+                        exit;
                     }
+                } else {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Document not found in request. Available: ' . implode(', ', array_keys($details['uploaded_documents'] ?? []))]);
+                    exit;
                 }
+            } else {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Request not found']);
+                exit;
             }
-            
-            // If document not found, return placeholder
-            echo json_encode(['success' => false, 'message' => 'Document not found']);
         } catch (Exception $e) {
+            error_log("Document view error: " . $e->getMessage());
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Error viewing document: ' . $e->getMessage()]);
         }
         break;
