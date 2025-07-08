@@ -280,9 +280,14 @@
                 <div class="admin-page-header">
                     <h1 class="admin-page-title">Report Activities</h1>
                     <p class="admin-page-subtitle">Monitor system activities and user actions</p>
-                    <button class="admin-btn admin-btn-primary" onclick="printActivityReport()">
-                        🖨️ Print Report
-                    </button>
+                    <div style="display: flex; gap: 15px;">
+                        <button class="admin-btn admin-btn-secondary" onclick="exportActivitiesCSV()">
+                            📊 Export CSV
+                        </button>
+                        <button class="admin-btn admin-btn-primary" onclick="printActivityReport()">
+                            🖨️ Print Report
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Activity Statistics -->
@@ -293,6 +298,7 @@
                             <div class="admin-card-content">
                                 <h3>Admin Activities</h3>
                                 <div class="admin-card-number" id="totalAdminActivities">0</div>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Last 30 days</div>
                             </div>
                         </div>
                     </div>
@@ -303,6 +309,7 @@
                             <div class="admin-card-content">
                                 <h3>User Activities</h3>
                                 <div class="admin-card-number" id="totalUserActivities">0</div>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Last 30 days</div>
                             </div>
                         </div>
                     </div>
@@ -313,6 +320,7 @@
                             <div class="admin-card-content">
                                 <h3>Admin Logins</h3>
                                 <div class="admin-card-number" id="totalAdminLogins">0</div>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Last 30 days</div>
                             </div>
                         </div>
                     </div>
@@ -323,6 +331,7 @@
                             <div class="admin-card-content">
                                 <h3>User Logins</h3>
                                 <div class="admin-card-number" id="totalUserLogins">0</div>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Last 30 days</div>
                             </div>
                         </div>
                     </div>
@@ -354,6 +363,9 @@
                             </select>
                             <button class="admin-btn admin-btn-secondary" onclick="filterActivities()">
                                 🔍 Filter
+                            </button>
+                            <button class="admin-btn admin-btn-secondary" onclick="clearActivityFilters()">
+                                🔄 Clear
                             </button>
                         </div>
                     </div>
