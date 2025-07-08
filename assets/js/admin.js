@@ -1,6 +1,9 @@
 // E-Barangay Admin Portal JavaScript
 let currentAdminUser = null;
 let currentActivitiesPage = 1;
+let currentResidentsPage = 1;
+let selectedResidents = new Set();
+let currentResidentForEdit = null;
 
 // Initialize admin app
 document.addEventListener('DOMContentLoaded', function() {
@@ -218,12 +221,6 @@ function showAdminPage(page) {
         case 'backup':
             loadBackupData();
             break;
-        case 'backup':
-            loadBackupData();
-            break;
-        case 'backup':
-            loadBackupData();
-            break;
     }
 }
 
@@ -300,17 +297,31 @@ function displayAdminRecentRequests(requests) {
 // Residents management
 async function loadAdminResidentsData() {
     try {
-        const response = await fetch('api/admin-residents.php?action=get_all');
+        const search = document.getElementById('residentsSearch')?.value || '';
+        const statusFilter = document.getElementById('residentsStatusFilter')?.value || '';
+        const roleFilter = document.getElementById('residentsRoleFilter')?.value || '';
+        
+        const params = new URLSearchParams({
+            action: 'get_all',
+            page: currentResidentsPage,
+            limit: 20,
+            search: search,
+            status_filter: statusFilter,
+            role_filter: roleFilter
+        });
+        
+        const response = await fetch(`api/admin-residents.php?${params}`);
         const data = await response.json();
         
         if (data.success) {
             displayAdminResidentsTable(data.residents);
-            
-            // Log residents data load
-            logAdminActivity('load_residents_data', 'data', null, `Loaded ${data.residents.length} residents`);
+            updateResidentsPagination(data.page, data.total_pages, data.total);
+        } else {
+            showAdminMessage(data.message, 'error');
         }
     } catch (error) {
         console.error('Failed to load residents:', error);
+        showAdminMessage('Failed to load residents', 'error');
     }
 }
 
@@ -319,12 +330,15 @@ function displayAdminResidentsTable(residents) {
     if (!tbody) return;
     
     if (residents.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b;">No residents found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #64748b;">No residents found</td></tr>';
         return;
     }
     
     tbody.innerHTML = residents.map(resident => `
         <tr>
+            <td>
+                <input type="checkbox" class="resident-checkbox" value="${resident.id}" onchange="toggleResidentSelection(this)">
+            </td>
             <td>
                 <div style="font-weight: 600;">${resident.first_name} ${resident.last_name}</div>
                 <div style="font-size: 0.875rem; color: #64748b;">${resident.middle_name || ''}</div>
@@ -337,14 +351,498 @@ function displayAdminResidentsTable(residents) {
                 <div>${[resident.house_no, resident.street, resident.purok].filter(Boolean).join(', ')}</div>
                 <div style="font-size: 0.875rem; color: #64748b;">${[resident.barangay, resident.city].filter(Boolean).join(', ')}</div>
             </td>
+            <td><span class="status-badge ${resident.role?.toLowerCase() || 'resident'}">${resident.role || 'Resident'}</span></td>
             <td><span class="status-badge ${resident.status}">${resident.status}</span></td>
             <td>${formatAdminDate(resident.created_at)}</td>
             <td>
+                <button class="admin-action-btn view" onclick="viewResidentDetails(${resident.id})" title="View Details">👁️</button>
                 <button class="admin-action-btn edit" onclick="editResident(${resident.id})" title="Edit">✏️</button>
+                <button class="admin-action-btn ${resident.status === 'Active' ? 'reject' : 'approve'}" onclick="toggleResidentStatus(${resident.id})" title="${resident.status === 'Active' ? 'Deactivate' : 'Activate'}">${resident.status === 'Active' ? '❌' : '✅'}</button>
                 <button class="admin-action-btn delete" onclick="deleteResident(${resident.id})" title="Delete">🗑️</button>
             </td>
         </tr>
     `).join('');
+}
+
+function updateResidentsPagination(currentPage, totalPages, totalCount) {
+    const pagination = document.getElementById('residentsPagination');
+    const pageInfo = document.getElementById('residentsPageInfo');
+    const prevBtn = document.getElementById('prevResidentsBtn');
+    const nextBtn = document.getElementById('nextResidentsBtn');
+    
+    if (pagination && pageInfo && prevBtn && nextBtn) {
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalCount} residents)`;
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= totalPages;
+        pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+    }
+}
+
+function loadResidentsPage(page) {
+    if (page < 1) return;
+    currentResidentsPage = page;
+    loadAdminResidentsData();
+}
+
+function filterResidents() {
+    currentResidentsPage = 1;
+    loadAdminResidentsData();
+}
+
+function clearResidentFilters() {
+    document.getElementById('residentsSearch').value = '';
+    document.getElementById('residentsStatusFilter').value = '';
+    document.getElementById('residentsRoleFilter').value = '';
+    currentResidentsPage = 1;
+    loadAdminResidentsData();
+}
+
+// Resident selection functions
+function toggleAllResidents(checkbox) {
+    const checkboxes = document.querySelectorAll('.resident-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+        toggleResidentSelection(cb);
+    });
+}
+
+function toggleResidentSelection(checkbox) {
+    const residentId = parseInt(checkbox.value);
+    
+    if (checkbox.checked) {
+        selectedResidents.add(residentId);
+    } else {
+        selectedResidents.delete(residentId);
+    }
+    
+    updateBulkActionsVisibility();
+}
+
+function updateBulkActionsVisibility() {
+    const bulkActions = document.getElementById('residentBulkActions');
+    const countSpan = document.getElementById('selectedResidentsCount');
+    
+    if (selectedResidents.size > 0) {
+        bulkActions.style.display = 'block';
+        countSpan.textContent = `${selectedResidents.size} residents selected`;
+    } else {
+        bulkActions.style.display = 'none';
+    }
+}
+
+function clearResidentSelection() {
+    selectedResidents.clear();
+    document.querySelectorAll('.resident-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAllResidents').checked = false;
+    updateBulkActionsVisibility();
+}
+
+// Bulk actions
+async function bulkActivateResidents() {
+    if (selectedResidents.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to activate ${selectedResidents.size} residents?`)) {
+        return;
+    }
+    
+    await performBulkAction('activate');
+}
+
+async function bulkDeactivateResidents() {
+    if (selectedResidents.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to deactivate ${selectedResidents.size} residents?`)) {
+        return;
+    }
+    
+    await performBulkAction('deactivate');
+}
+
+async function bulkDeleteResidents() {
+    if (selectedResidents.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedResidents.size} residents? This action cannot be undone.`)) {
+        return;
+    }
+    
+    await performBulkAction('delete');
+}
+
+async function performBulkAction(actionType) {
+    const formData = new FormData();
+    formData.append('action', 'bulk_action');
+    formData.append('action_type', actionType);
+    
+    selectedResidents.forEach(id => {
+        formData.append('resident_ids[]', id);
+    });
+    
+    try {
+        const response = await fetch('api/admin-residents.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage(data.message, 'success');
+            clearResidentSelection();
+            loadAdminResidentsData();
+            loadAdminDashboardData();
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Bulk action failed:', error);
+        showAdminMessage('Bulk action failed', 'error');
+    }
+}
+
+// Individual resident actions
+async function viewResidentDetails(residentId) {
+    try {
+        const response = await fetch(`api/admin-residents.php?action=get_by_id&id=${residentId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            showResidentDetailsModal(data.resident);
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to load resident details:', error);
+        showAdminMessage('Failed to load resident details', 'error');
+    }
+}
+
+function showResidentDetailsModal(resident) {
+    const modal = document.getElementById('residentDetailsModal');
+    const content = document.getElementById('residentDetailsContent');
+    const title = document.getElementById('residentDetailsTitle');
+    
+    title.textContent = `👤 ${resident.first_name} ${resident.last_name}`;
+    
+    content.innerHTML = `
+        <div class="details-grid">
+            <div class="detail-section">
+                <h4>👤 Basic Information</h4>
+                <div class="detail-item">
+                    <label>Full Name</label>
+                    <span>${resident.first_name} ${resident.middle_name || ''} ${resident.last_name}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Sex</label>
+                    <span>${resident.sex || 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Birth Date</label>
+                    <span>${resident.birth_date ? formatAdminDate(resident.birth_date) : 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Age</label>
+                    <span>${resident.age || 'Not calculated'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Civil Status</label>
+                    <span>${resident.civil_status || 'Not specified'}</span>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <h4>📞 Contact Information</h4>
+                <div class="detail-item">
+                    <label>Email</label>
+                    <span>${resident.email}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Mobile Number</label>
+                    <span>${resident.mobile_number || 'Not provided'}</span>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <h4>🏠 Address Information</h4>
+                <div class="detail-item">
+                    <label>Complete Address</label>
+                    <span>${[resident.house_no, resident.street, resident.purok, resident.barangay, resident.city, resident.province].filter(Boolean).join(', ') || 'Not provided'}</span>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <h4>⚙️ System Information</h4>
+                <div class="detail-item">
+                    <label>Role</label>
+                    <span class="status-badge ${resident.role?.toLowerCase() || 'resident'}">${resident.role || 'Resident'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Status</label>
+                    <span class="status-badge ${resident.status}">${resident.status}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Voter Status</label>
+                    <span>${resident.voter_status || 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Employment Status</label>
+                    <span>${resident.employment_status || 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Registered</label>
+                    <span>${formatAdminDate(resident.created_at)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    currentResidentForEdit = resident;
+    modal.style.display = 'flex';
+}
+
+function closeResidentDetailsModal() {
+    document.getElementById('residentDetailsModal').style.display = 'none';
+    currentResidentForEdit = null;
+}
+
+function editResidentFromDetails() {
+    if (currentResidentForEdit) {
+        closeResidentDetailsModal();
+        editResident(currentResidentForEdit.id);
+    }
+}
+
+async function editResident(residentId) {
+    try {
+        const response = await fetch(`api/admin-residents.php?action=get_by_id&id=${residentId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            showEditResidentModal(data.resident);
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to load resident for editing:', error);
+        showAdminMessage('Failed to load resident for editing', 'error');
+    }
+}
+
+function showEditResidentModal(resident) {
+    const modal = document.getElementById('editResidentModal');
+    
+    // Populate form fields
+    document.getElementById('editResidentId').value = resident.id;
+    document.getElementById('editResidentFirstName').value = resident.first_name || '';
+    document.getElementById('editResidentLastName').value = resident.last_name || '';
+    document.getElementById('editResidentMiddleName').value = resident.middle_name || '';
+    document.getElementById('editResidentSex').value = resident.sex || 'Male';
+    document.getElementById('editResidentBirthDate').value = resident.birth_date || '';
+    document.getElementById('editResidentCivilStatus').value = resident.civil_status || 'Single';
+    document.getElementById('editResidentEmail').value = resident.email || '';
+    document.getElementById('editResidentMobile').value = resident.mobile_number || '';
+    document.getElementById('editResidentHouseNo').value = resident.house_no || '';
+    document.getElementById('editResidentStreet').value = resident.street || '';
+    document.getElementById('editResidentPurok').value = resident.purok || '';
+    document.getElementById('editResidentBarangay').value = resident.barangay || '';
+    document.getElementById('editResidentCity').value = resident.city || '';
+    document.getElementById('editResidentProvince').value = resident.province || '';
+    document.getElementById('editResidentRole').value = resident.role || 'Resident';
+    document.getElementById('editResidentStatus').value = resident.status || 'Active';
+    document.getElementById('editResidentVoterStatus').value = resident.voter_status || 'Not Registered';
+    document.getElementById('editResidentEmploymentStatus').value = resident.employment_status || 'Unemployed';
+    
+    modal.style.display = 'flex';
+}
+
+function closeEditResidentModal() {
+    document.getElementById('editResidentModal').style.display = 'none';
+    document.getElementById('editResidentForm').reset();
+}
+
+async function toggleResidentStatus(residentId) {
+    if (!confirm('Are you sure you want to change this resident\'s status?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'toggle_status');
+    formData.append('id', residentId);
+    
+    try {
+        const response = await fetch('api/admin-residents.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage(data.message, 'success');
+            loadAdminResidentsData();
+            loadAdminDashboardData();
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to toggle resident status:', error);
+        showAdminMessage('Failed to toggle resident status', 'error');
+    }
+}
+
+async function deleteResident(residentId) {
+    if (!confirm('Are you sure you want to delete this resident? This action cannot be undone.')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'delete');
+    formData.append('id', residentId);
+    
+    try {
+        const response = await fetch('api/admin-residents.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage(data.message, 'success');
+            loadAdminResidentsData();
+            loadAdminDashboardData();
+            
+            // Log resident deletion
+            logAdminActivity('delete_resident', 'resident', residentId, 'Deleted/deactivated resident');
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to delete resident:', error);
+        showAdminMessage('Failed to delete resident', 'error');
+    }
+}
+
+// Export functions
+async function exportResidents(format = 'csv') {
+    try {
+        const response = await fetch(`api/admin-residents.php?action=export&format=${format}`);
+        
+        if (format === 'csv') {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `residents_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showAdminMessage('Residents exported successfully!', 'success');
+        } else {
+            const data = await response.json();
+            if (data.success) {
+                showAdminMessage('Export completed successfully!', 'success');
+            } else {
+                showAdminMessage(data.message, 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Export failed:', error);
+        showAdminMessage('Export failed', 'error');
+    }
+}
+
+// Statistics functions
+async function showResidentStatistics() {
+    try {
+        const response = await fetch('api/admin-residents.php?action=get_statistics');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayResidentStatistics(data.statistics);
+            document.getElementById('residentStatisticsModal').style.display = 'flex';
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to load statistics:', error);
+        showAdminMessage('Failed to load statistics', 'error');
+    }
+}
+
+function displayResidentStatistics(stats) {
+    const content = document.getElementById('residentStatisticsContent');
+    
+    content.innerHTML = `
+        <div class="statistics-grid">
+            <div class="stat-card">
+                <h3>📊 General Statistics</h3>
+                <div class="stat-item">
+                    <label>Total Residents</label>
+                    <span class="stat-number">${stats.total}</span>
+                </div>
+                <div class="stat-item">
+                    <label>Active Residents</label>
+                    <span class="stat-number">${stats.active}</span>
+                </div>
+                <div class="stat-item">
+                    <label>New This Month</label>
+                    <span class="stat-number">${stats.new_this_month}</span>
+                </div>
+                <div class="stat-item">
+                    <label>Registered Voters</label>
+                    <span class="stat-number">${stats.voters}</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>👥 Age Distribution</h3>
+                <div class="stat-item">
+                    <label>18-30 years</label>
+                    <span class="stat-number">${stats.age_distribution.age_18_30}</span>
+                </div>
+                <div class="stat-item">
+                    <label>31-50 years</label>
+                    <span class="stat-number">${stats.age_distribution.age_31_50}</span>
+                </div>
+                <div class="stat-item">
+                    <label>51-70 years</label>
+                    <span class="stat-number">${stats.age_distribution.age_51_70}</span>
+                </div>
+                <div class="stat-item">
+                    <label>Over 70 years</label>
+                    <span class="stat-number">${stats.age_distribution.age_over_70}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Update dashboard stats cards
+    document.getElementById('statTotalResidents').textContent = stats.total;
+    document.getElementById('statActiveResidents').textContent = stats.active;
+    document.getElementById('statNewThisMonth').textContent = stats.new_this_month;
+    document.getElementById('statVoters').textContent = stats.voters;
+    
+    // Show stats grid
+    document.getElementById('residentStatsGrid').style.display = 'grid';
+}
+
+function closeResidentStatisticsModal() {
+    document.getElementById('residentStatisticsModal').style.display = 'none';
+}
+
+// Password reset functions
+function resetResidentPassword() {
+    if (currentResidentForEdit) {
+        document.getElementById('resetPasswordResidentId').value = currentResidentForEdit.id;
+        document.getElementById('resetPasswordModal').style.display = 'flex';
+    }
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').style.display = 'none';
+    document.getElementById('resetPasswordForm').reset();
 }
 
 // Requests management
@@ -1975,42 +2473,119 @@ function closeAddResidentModal() {
     document.getElementById('addResidentForm').reset();
 }
 
-async function editResident(residentId) {
-    showAdminMessage('Edit resident functionality coming soon', 'info');
-}
-
-async function deleteResident(residentId) {
-    if (!confirm('Are you sure you want to delete this resident? This action cannot be undone.')) {
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('action', 'delete');
-    formData.append('id', residentId);
-    
-    try {
-        const response = await fetch('api/admin-residents.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAdminMessage(data.message, 'success');
-            loadAdminResidentsData();
-            loadAdminDashboardData();
+// Form submission handlers
+document.addEventListener('DOMContentLoaded', function() {
+    // Add resident form
+    const addResidentForm = document.getElementById('addResidentForm');
+    if (addResidentForm) {
+        addResidentForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            // Log resident deletion
-            logAdminActivity('delete_resident', 'resident', residentId, 'Deleted/deactivated resident');
-        } else {
-            showAdminMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to delete resident:', error);
-        showAdminMessage('Failed to delete resident', 'error');
+            const formData = new FormData(this);
+            formData.append('action', 'add');
+            
+            try {
+                const response = await fetch('api/admin-residents.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAdminMessage(data.message, 'success');
+                    closeAddResidentModal();
+                    loadAdminResidentsData();
+                    loadAdminDashboardData();
+                } else {
+                    showAdminMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to add resident:', error);
+                showAdminMessage('Failed to add resident', 'error');
+            }
+        });
     }
-}
+    
+    // Edit resident form
+    const editResidentForm = document.getElementById('editResidentForm');
+    if (editResidentForm) {
+        editResidentForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('action', 'update');
+            
+            try {
+                const response = await fetch('api/admin-residents.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAdminMessage(data.message, 'success');
+                    closeEditResidentModal();
+                    loadAdminResidentsData();
+                    loadAdminDashboardData();
+                } else {
+                    showAdminMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to update resident:', error);
+                showAdminMessage('Failed to update resident', 'error');
+            }
+        });
+    }
+    
+    // Reset password form
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('action', 'reset_password');
+            formData.append('id', document.getElementById('resetPasswordResidentId').value);
+            
+            try {
+                const response = await fetch('api/admin-residents.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAdminMessage(data.message, 'success');
+                    closeResetPasswordModal();
+                    if (currentResidentForEdit) {
+                        closeResidentDetailsModal();
+                    }
+                } else {
+                    showAdminMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to reset password:', error);
+                showAdminMessage('Failed to reset password', 'error');
+            }
+        });
+    }
+    
+    // Search functionality
+    const residentsSearch = document.getElementById('residentsSearch');
+    if (residentsSearch) {
+        let searchTimeout;
+        residentsSearch.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentResidentsPage = 1;
+                loadAdminResidentsData();
+            }, 500);
+        });
+    }
+});
 
 // Modal functions
 function closeAdminModal() {
