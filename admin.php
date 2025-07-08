@@ -623,6 +623,47 @@
         </div>
     </div>
 
+    <!-- Document Viewer Modal -->
+    <div id="documentViewerModal" class="admin-modal">
+        <div class="admin-modal-content document-viewer-modal">
+            <div class="document-viewer-header">
+                <h2 id="documentViewerTitle" class="document-viewer-title">📄 Document Viewer</h2>
+                <button class="admin-modal-close" onclick="closeDocumentViewerModal()">✕</button>
+            </div>
+            <div class="document-viewer-body">
+                <div class="document-viewer-loading">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📄</div>
+                    <div>Loading document...</div>
+                </div>
+                <div class="document-viewer-error" style="display: none;">
+                    <div class="document-viewer-error-icon">❌</div>
+                    <h3>Unable to Load Document</h3>
+                    <p>The document could not be displayed. It may be corrupted or in an unsupported format.</p>
+                    <div class="document-viewer-actions">
+                        <button class="document-viewer-btn download" onclick="downloadDocumentFromViewer()">
+                            📥 Download Document
+                        </button>
+                        <button class="document-viewer-btn new-tab" onclick="openDocumentInNewTab()">
+                            🔗 Open in New Tab
+                        </button>
+                    </div>
+                </div>
+                <iframe id="documentViewerFrame" class="document-viewer-frame" style="display: none;"></iframe>
+            </div>
+            <div class="document-viewer-actions">
+                <button class="document-viewer-btn download" onclick="downloadDocumentFromViewer()">
+                    📥 Download
+                </button>
+                <button class="document-viewer-btn new-tab" onclick="openDocumentInNewTab()">
+                    🔗 Open in New Tab
+                </button>
+                <button class="document-viewer-btn close" onclick="closeDocumentViewerModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Activity Report Print Modal -->
     <div id="activityReportModal" class="admin-modal">
         <div class="admin-modal-content activity-report-modal">

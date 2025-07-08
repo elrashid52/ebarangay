@@ -443,9 +443,109 @@ function updateDocumentsSection(uploadedDocuments, requestId) {
 }
 
 function viewDocument(requestId, documentType) {
-    // Open document in new tab
+    // Open document in modal viewer
+    openDocumentViewerModal(requestId, documentType);
+}
+
+// New function to open document viewer modal
+function openDocumentViewerModal(requestId, documentType) {
+    const modal = document.getElementById('documentViewerModal');
+    const iframe = document.getElementById('documentViewerFrame');
+    const title = document.getElementById('documentViewerTitle');
+    const loading = document.querySelector('.document-viewer-loading');
+    const errorDiv = document.querySelector('.document-viewer-error');
+    
+    // Clean up document type name for display
+    let displayName = documentType;
+    const displayMappings = {
+        'document_valid_government_issued_id__with_address_': 'Valid Government-issued ID (with address)',
+        'document_proof_of_billing__proof_of_residency__if_not_on_id_': 'Proof of Billing / Proof of Residency',
+        'document_cedula': 'Cedula',
+        'document_no_income_or_proof_of_unemployment': 'No Income or Proof of Unemployment',
+        'valid_id': 'Valid ID',
+        'proof_billing': 'Proof of Billing',
+        'cedula': 'Cedula',
+        'proof_of_residency': 'Proof of Residency',
+        'proof_of_unemployment': 'Proof of Unemployment'
+    };
+    
+    if (displayMappings[documentType]) {
+        displayName = displayMappings[documentType];
+    } else {
+        displayName = documentType
+            .replace(/document_/g, '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    // Set title
+    title.textContent = `📄 ${displayName}`;
+    
+    // Show modal
+    modal.style.display = 'flex';
+    
+    // Show loading state
+    loading.style.display = 'flex';
+    errorDiv.style.display = 'none';
+    iframe.style.display = 'none';
+    
+    // Set iframe source
     const url = `api/admin-requests.php?action=view_document&request_id=${requestId}&document_type=${documentType}`;
-    window.open(url, '_blank');
+    iframe.src = url;
+    
+    // Handle iframe load
+    iframe.onload = function() {
+        loading.style.display = 'none';
+        iframe.style.display = 'block';
+    };
+    
+    // Handle iframe error
+    iframe.onerror = function() {
+        loading.style.display = 'none';
+        errorDiv.style.display = 'flex';
+    };
+    
+    // Store current document info for download/new tab actions
+    modal.dataset.requestId = requestId;
+    modal.dataset.documentType = documentType;
+}
+
+// Close document viewer modal
+function closeDocumentViewerModal() {
+    const modal = document.getElementById('documentViewerModal');
+    const iframe = document.getElementById('documentViewerFrame');
+    
+    modal.style.display = 'none';
+    iframe.src = ''; // Clear iframe to stop loading
+}
+
+// Download document from viewer
+function downloadDocumentFromViewer() {
+    const modal = document.getElementById('documentViewerModal');
+    const requestId = modal.dataset.requestId;
+    const documentType = modal.dataset.documentType;
+    
+    if (requestId && documentType) {
+        const url = `api/admin-requests.php?action=view_document&request_id=${requestId}&document_type=${documentType}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${documentType}_${requestId}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+}
+
+// Open document in new tab from viewer
+function openDocumentInNewTab() {
+    const modal = document.getElementById('documentViewerModal');
+    const requestId = modal.dataset.requestId;
+    const documentType = modal.dataset.documentType;
+    
+    if (requestId && documentType) {
+        const url = `api/admin-requests.php?action=view_document&request_id=${requestId}&document_type=${documentType}`;
+        window.open(url, '_blank');
+    }
 }
 
 function closeAdminRequestReviewModal() {
