@@ -260,7 +260,7 @@ switch($action) {
         
         try {
             // Get request details
-            $query = "SELECT request_details FROM requests WHERE id = :id";
+            $query = "SELECT request_details, resident_id FROM requests WHERE id = :id";
             $stmt = $db->prepare($query);
             $stmt->bindParam(':id', $requestId);
             $stmt->execute();
@@ -271,9 +271,44 @@ switch($action) {
                 
                 error_log("Request details: " . print_r($details, true));
                 error_log("Looking for document type: " . $documentType);
+                error_log("Available document keys: " . implode(', ', array_keys($details['uploaded_documents'] ?? [])));
                 
-                if(isset($details['uploaded_documents'][$documentType])) {
-                    $filename = $details['uploaded_documents'][$documentType];
+                // Handle different document field name formats
+                $uploadedDocs = $details['uploaded_documents'] ?? [];
+                $filename = null;
+                
+                // Try exact match first
+                if(isset($uploadedDocs[$documentType])) {
+                    $filename = $uploadedDocs[$documentType];
+                } else {
+                    // Try to find by partial match (for long field names)
+                    foreach($uploadedDocs as $key => $value) {
+                        if(strpos($key, $documentType) !== false || strpos($documentType, $key) !== false) {
+                            $filename = $value;
+                            break;
+                        }
+                    }
+                    
+                    // Try common mappings
+                    $mappings = [
+                        'valid_id' => ['document_valid_government_issued_id__with_address_', 'valid_government_issued_id', 'government_id'],
+                        'proof_billing' => ['document_proof_of_billing__proof_of_residency__if_not_on_id_', 'proof_of_billing', 'proof_billing'],
+                        'cedula' => ['document_cedula', 'cedula'],
+                        'proof_of_residency' => ['document_proof_of_billing__proof_of_residency__if_not_on_id_', 'proof_of_residency'],
+                        'proof_of_unemployment' => ['document_no_income_or_proof_of_unemployment', 'proof_of_unemployment']
+                    ];
+                    
+                    if(isset($mappings[$documentType])) {
+                        foreach($mappings[$documentType] as $possibleKey) {
+                            if(isset($uploadedDocs[$possibleKey])) {
+                                $filename = $uploadedDocs[$possibleKey];
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if($filename) {
                     $filepath = '../uploads/requests/' . $filename;
                     
                     error_log("Looking for file: " . $filepath);
@@ -295,7 +330,7 @@ switch($action) {
                     }
                 } else {
                     header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'message' => 'Document not found in request. Available: ' . implode(', ', array_keys($details['uploaded_documents'] ?? []))]);
+                    echo json_encode(['success' => false, 'message' => 'Document not found in request. Looking for: ' . $documentType . '. Available: ' . implode(', ', array_keys($uploadedDocs))]);
                     exit;
                 }
             } else {
