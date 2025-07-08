@@ -345,7 +345,7 @@
                 <div class="admin-data-grid">
                     <div class="admin-data-grid-header">
                         <div class="admin-search-bar">
-                            <input type="text" id="activitiesSearch" placeholder="Search activities..." class="admin-search-input">
+                            <input type="text" id="activitiesSearch" placeholder="Search users/admins..." class="admin-search-input">
                         </div>
                         <div class="admin-filter-controls">
                             <input type="date" id="activitiesDateFrom" class="admin-filter-select" title="From Date">
@@ -353,7 +353,7 @@
                             <select id="activitiesTypeFilter" class="admin-filter-select">
                                 <option value="all">All Activities</option>
                                 <option value="admin">Admin Only</option>
-                                <option value="user">Users Only</option>
+                                <option value="user">Residents Only</option>
                             </select>
                             <select id="activitiesActionFilter" class="admin-filter-select">
                                 <option value="">All Actions</option>
@@ -364,6 +364,10 @@
                                 <option value="create">Create</option>
                                 <option value="update">Update</option>
                                 <option value="delete">Delete</option>
+                                <option value="view">View</option>
+                                <option value="submit">Submit</option>
+                                <option value="download">Download</option>
+                                <option value="filter">Filter</option>
                             </select>
                             <button class="admin-btn admin-btn-secondary" onclick="filterActivities()">
                                 🔍 Filter
@@ -379,7 +383,7 @@
                             <thead>
                                 <tr>
                                     <th>TIMESTAMP</th>
-                                    <th>USER/ADMIN</th>
+                                    <th>USER</th>
                                     <th>TYPE</th>
                                     <th>ACTION</th>
                                     <th>TARGET</th>
