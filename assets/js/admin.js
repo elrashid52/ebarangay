@@ -173,6 +173,9 @@ function showAdminPage(page) {
         case 'activities':
             loadAdminActivitiesData();
             break;
+        case 'backup':
+            loadBackupData();
+            break;
     }
 }
 
@@ -1040,6 +1043,208 @@ function clearActivityFilters() {
     
     showAdminMessage('Filters cleared', 'success');
 }
+
+// Backup and Restore Functions
+async function loadBackupData() {
+    try {
+        const response = await fetch('api/admin-backup.php?action=list_backups');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayBackupsList(data.backups);
+        }
+    } catch (error) {
+        console.error('Failed to load backup data:', error);
+    }
+}
+
+function displayBackupsList(backups) {
+    const tbody = document.getElementById('backupsTableBody');
+    if (!tbody) return;
+    
+    if (backups.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b;">No backups found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = backups.map(backup => `
+        <tr>
+            <td>
+                <div style="font-weight: 600;">${backup.name}</div>
+                <div style="font-size: 0.875rem; color: #64748b;">${formatAdminDateTime(backup.created_at)}</div>
+            </td>
+            <td>
+                ${backup.database ? '<span class="status-badge approved">✅ Database</span>' : '<span class="status-badge pending">❌ Database</span>'}
+                ${backup.files ? '<span class="status-badge approved">✅ Files</span>' : '<span class="status-badge pending">❌ Files</span>'}
+            </td>
+            <td>${formatFileSize(backup.size)}</td>
+            <td>${formatAdminDate(backup.created_at)}</td>
+            <td>
+                ${backup.database && backup.files ? '<span class="status-badge approved">Complete</span>' : '<span class="status-badge pending">Partial</span>'}
+            </td>
+            <td>
+                <button class="admin-action-btn view" onclick="downloadBackup('${backup.name}', 'database')" title="Download Database" ${!backup.database ? 'disabled' : ''}>💾</button>
+                <button class="admin-action-btn view" onclick="downloadBackup('${backup.name}', 'files')" title="Download Files" ${!backup.files ? 'disabled' : ''}>📁</button>
+                <button class="admin-action-btn approve" onclick="restoreBackup('${backup.name}')" title="Restore">🔄</button>
+                <button class="admin-action-btn delete" onclick="deleteBackup('${backup.name}')" title="Delete">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function createBackup() {
+    const backupType = document.getElementById('backupType').value;
+    const backupName = document.getElementById('backupName').value.trim() || 'backup_' + new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    
+    if (!backupType) {
+        showAdminMessage('Please select backup type', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const createBtn = document.getElementById('createBackupBtn');
+    const originalText = createBtn.textContent;
+    createBtn.disabled = true;
+    createBtn.textContent = 'Creating Backup...';
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'create_backup');
+        formData.append('backup_type', backupType);
+        formData.append('backup_name', backupName);
+        
+        const response = await fetch('api/admin-backup.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage('Backup created successfully!', 'success');
+            loadBackupData(); // Refresh the list
+            
+            // Reset form
+            document.getElementById('backupName').value = '';
+            document.getElementById('backupType').value = '';
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Backup creation failed:', error);
+        showAdminMessage('Failed to create backup', 'error');
+    } finally {
+        // Restore button state
+        createBtn.disabled = false;
+        createBtn.textContent = originalText;
+    }
+}
+
+async function restoreBackup(backupName) {
+    if (!confirm(`Are you sure you want to restore backup "${backupName}"? This will overwrite current data and cannot be undone.`)) {
+        return;
+    }
+    
+    const restoreType = prompt('Restore type (database/files/full):', 'full');
+    if (!restoreType || !['database', 'files', 'full'].includes(restoreType)) {
+        showAdminMessage('Invalid restore type', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'restore_backup');
+        formData.append('backup_name', backupName);
+        formData.append('restore_type', restoreType);
+        
+        const response = await fetch('api/admin-backup.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage('Backup restored successfully!', 'success');
+            
+            // If database was restored, suggest page reload
+            if (restoreType === 'database' || restoreType === 'full') {
+                setTimeout(() => {
+                    if (confirm('Database was restored. Would you like to reload the page to see changes?')) {
+                        window.location.reload();
+                    }
+                }, 2000);
+            }
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Restore failed:', error);
+        showAdminMessage('Failed to restore backup', 'error');
+    }
+}
+
+async function deleteBackup(backupName) {
+    if (!confirm(`Are you sure you want to delete backup "${backupName}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'delete_backup');
+        formData.append('backup_name', backupName);
+        
+        const response = await fetch('api/admin-backup.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage('Backup deleted successfully!', 'success');
+            loadBackupData(); // Refresh the list
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Delete failed:', error);
+        showAdminMessage('Failed to delete backup', 'error');
+    }
+}
+
+function downloadBackup(backupName, backupType) {
+    const url = `api/admin-backup.php?action=download_backup&backup_name=${encodeURIComponent(backupName)}&backup_type=${backupType}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${backupName}_${backupType}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function openBackupScheduleModal() {
+    document.getElementById('backupScheduleModal').style.display = 'flex';
+}
+
+function closeBackupScheduleModal() {
+    document.getElementById('backupScheduleModal').style.display = 'none';
+}
+
+async function saveBackupSchedule() {
+    // This would implement automatic backup scheduling
+    showAdminMessage('Backup scheduling feature coming soon!', 'info');
+    closeBackupScheduleModal();
+}
+
 function closeActivityReportModal() {
     document.getElementById('activityReportModal').style.display = 'none';
 }
