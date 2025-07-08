@@ -179,6 +179,9 @@ function showAdminPage(page) {
         case 'backup':
             loadBackupData();
             break;
+        case 'backup':
+            loadBackupData();
+            break;
     }
 }
 
@@ -1569,6 +1572,310 @@ async function saveBackupSchedule() {
 
 function closeActivityReportModal() {
     document.getElementById('activityReportModal').style.display = 'none';
+}
+
+// Backup & Restore functions
+async function loadBackupData() {
+    try {
+        // Load backup statistics
+        const statsResponse = await fetch('api/admin-backup.php?action=get_backup_stats');
+        const statsData = await statsResponse.json();
+        
+        if (statsData.success) {
+            updateBackupStats(statsData.stats);
+        }
+        
+        // Load backups list
+        const listResponse = await fetch('api/admin-backup.php?action=list_backups');
+        const listData = await listResponse.json();
+        
+        if (listData.success) {
+            displayBackupsList(listData.backups);
+        }
+        
+    } catch (error) {
+        console.error('Failed to load backup data:', error);
+        showAdminMessage('Failed to load backup data', 'error');
+    }
+}
+
+function updateBackupStats(stats) {
+    document.getElementById('totalBackups').textContent = stats.total_backups || 0;
+    document.getElementById('totalBackupSize').textContent = stats.total_size_formatted || '0 B';
+    document.getElementById('latestBackup').textContent = stats.latest_backup || 'Never';
+    document.getElementById('backupStatus').textContent = stats.status || 'Ready';
+}
+
+function displayBackupsList(backups) {
+    const container = document.getElementById('backupsGrid');
+    
+    if (!backups || backups.length === 0) {
+        container.innerHTML = `
+            <div class="backup-empty-state">
+                <div class="backup-empty-icon">💾</div>
+                <h3>No Backups Found</h3>
+                <p>Create your first backup to get started with data protection.</p>
+                <button class="backup-btn backup-btn-primary" onclick="document.getElementById('backupType').focus()">
+                    <span class="backup-btn-icon">💾</span>
+                    <span class="backup-btn-text">Create First Backup</span>
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = backups.map(backup => `
+        <div class="backup-card">
+            <div class="backup-card-header">
+                <div>
+                    <h3 class="backup-card-title">${backup.name}</h3>
+                    <p class="backup-card-date">${formatAdminDate(backup.created_at)}</p>
+                </div>
+                <span class="backup-status-badge ${backup.status.toLowerCase()}">${backup.status}</span>
+            </div>
+            
+            <div class="backup-card-content">
+                <div class="backup-type-indicators">
+                    <div class="backup-type-indicator ${backup.database ? 'database' : 'unavailable'}">
+                        🗄️ Database ${backup.database ? '✓' : '✗'}
+                    </div>
+                    <div class="backup-type-indicator ${backup.files ? 'files' : 'unavailable'}">
+                        📁 Files ${backup.files ? '✓' : '✗'}
+                    </div>
+                </div>
+                <div class="backup-size-info">
+                    Size: ${backup.size_formatted}
+                </div>
+            </div>
+            
+            <div class="backup-card-actions">
+                <button class="backup-action-btn restore" onclick="openRestoreModal('${backup.name}')" title="Restore Backup">
+                    🔄 Restore
+                </button>
+                ${backup.database ? `
+                    <a href="api/admin-backup.php?action=download_backup&backup_name=${backup.name}&backup_type=database" 
+                       class="backup-action-btn download" title="Download Database">
+                        💾 DB
+                    </a>
+                ` : ''}
+                ${backup.files ? `
+                    <a href="api/admin-backup.php?action=download_backup&backup_name=${backup.name}&backup_type=files" 
+                       class="backup-action-btn download" title="Download Files">
+                        📁 Files
+                    </a>
+                ` : ''}
+                <button class="backup-action-btn delete" onclick="deleteBackup('${backup.name}')" title="Delete Backup">
+                    🗑️ Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function createBackup() {
+    const backupName = document.getElementById('backupName').value.trim();
+    const backupType = document.getElementById('backupType').value;
+    
+    if (!backupType) {
+        showAdminMessage('Please select a backup type', 'error');
+        return;
+    }
+    
+    const createBtn = document.getElementById('createBackupBtn');
+    const originalText = createBtn.innerHTML;
+    
+    // Show loading state
+    createBtn.disabled = true;
+    createBtn.innerHTML = `
+        <span class="backup-btn-icon">⏳</span>
+        <span class="backup-btn-text">Creating Backup...</span>
+    `;
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'create_backup');
+        formData.append('backup_name', backupName);
+        formData.append('backup_type', backupType);
+        
+        const response = await fetch('api/admin-backup.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage(data.message, 'success');
+            
+            // Clear form
+            document.getElementById('backupName').value = '';
+            document.getElementById('backupType').value = '';
+            hideBackupTypeInfo();
+            
+            // Reload backup data
+            loadBackupData();
+        } else {
+            showAdminMessage(data.message, data.has_failures ? 'error' : 'error');
+        }
+        
+    } catch (error) {
+        console.error('Backup creation failed:', error);
+        showAdminMessage('Backup creation failed. Please try again.', 'error');
+    } finally {
+        // Restore button state
+        createBtn.disabled = false;
+        createBtn.innerHTML = originalText;
+    }
+}
+
+function openRestoreModal(backupName) {
+    const modal = document.getElementById('backupRestoreModal');
+    const title = document.getElementById('restoreModalTitle');
+    
+    title.textContent = `🔄 Restore Backup: ${backupName}`;
+    modal.dataset.backupName = backupName;
+    
+    // Reset form
+    document.querySelector('input[name="restore_type"][value="full"]').checked = true;
+    document.getElementById('restoreConfirmation').checked = false;
+    document.getElementById('confirmRestoreBtn').disabled = true;
+    
+    modal.style.display = 'flex';
+}
+
+function closeBackupRestoreModal() {
+    document.getElementById('backupRestoreModal').style.display = 'none';
+}
+
+async function confirmRestore() {
+    const modal = document.getElementById('backupRestoreModal');
+    const backupName = modal.dataset.backupName;
+    const restoreType = document.querySelector('input[name="restore_type"]:checked').value;
+    
+    if (!document.getElementById('restoreConfirmation').checked) {
+        showAdminMessage('Please confirm that you understand the risks', 'error');
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('confirmRestoreBtn');
+    const originalText = confirmBtn.textContent;
+    
+    // Show loading state
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '🔄 Restoring...';
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'restore_backup');
+        formData.append('backup_name', backupName);
+        formData.append('restore_type', restoreType);
+        
+        const response = await fetch('api/admin-backup.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage(data.message, 'success');
+            closeBackupRestoreModal();
+            
+            // If database was restored, suggest page reload
+            if (restoreType === 'database' || restoreType === 'full') {
+                setTimeout(() => {
+                    if (confirm('Database has been restored. Would you like to reload the page to see the changes?')) {
+                        window.location.reload();
+                    }
+                }, 2000);
+            }
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Restore failed:', error);
+        showAdminMessage('Restore failed. Please try again.', 'error');
+    } finally {
+        // Restore button state
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
+    }
+}
+
+async function deleteBackup(backupName) {
+    if (!confirm(`Are you sure you want to delete the backup "${backupName}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'delete_backup');
+        formData.append('backup_name', backupName);
+        
+        const response = await fetch('api/admin-backup.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAdminMessage(data.message, 'success');
+            loadBackupData(); // Reload backup data
+        } else {
+            showAdminMessage(data.message, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Delete failed:', error);
+        showAdminMessage('Delete failed. Please try again.', 'error');
+    }
+}
+
+function openBackupScheduleModal() {
+    document.getElementById('backupScheduleModal').style.display = 'flex';
+}
+
+function closeBackupScheduleModal() {
+    document.getElementById('backupScheduleModal').style.display = 'none';
+}
+
+function saveBackupSchedule() {
+    // This would implement scheduled backup functionality
+    showAdminMessage('Backup scheduling feature coming soon!', 'info');
+    closeBackupScheduleModal();
+}
+
+// Show/hide backup type info based on selection
+document.addEventListener('DOMContentLoaded', function() {
+    const backupTypeSelect = document.getElementById('backupType');
+    const restoreConfirmation = document.getElementById('restoreConfirmation');
+    const confirmRestoreBtn = document.getElementById('confirmRestoreBtn');
+    
+    if (backupTypeSelect) {
+        backupTypeSelect.addEventListener('change', function() {
+            const infoDiv = document.getElementById('backupTypeInfo');
+            if (this.value) {
+                infoDiv.style.display = 'block';
+            } else {
+                infoDiv.style.display = 'none';
+            }
+        });
+    }
+    
+    if (restoreConfirmation && confirmRestoreBtn) {
+        restoreConfirmation.addEventListener('change', function() {
+            confirmRestoreBtn.disabled = !this.checked;
+        });
+    }
+});
+
+function hideBackupTypeInfo() {
+    const infoDiv = document.getElementById('backupTypeInfo');
+    if (infoDiv) {
+        infoDiv.style.display = 'none';
+    }
 }
 
 // Resident management functions
