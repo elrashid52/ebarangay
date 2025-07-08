@@ -67,6 +67,7 @@ switch($action) {
         
         // Method 1: Demo admin (ALWAYS WORKS)
         if($email === 'admin@barangay.gov.ph' && $password === 'admin123') {
+            error_log("Demo admin login successful");
             $_SESSION['user_id'] = 999;
             $_SESSION['user_email'] = 'admin@barangay.gov.ph';
             $_SESSION['user_name'] = 'Demo Admin';
@@ -95,6 +96,7 @@ switch($action) {
         
         // Method 2: Check admin_users table
         try {
+            error_log("Checking admin_users table for: " . $email);
             $adminQuery = "SELECT id, email, password, first_name, last_name, role, status 
                           FROM admin_users 
                           WHERE email = :email 
@@ -105,6 +107,7 @@ switch($action) {
             
             if($adminStmt->rowCount() > 0) {
                 $admin = $adminStmt->fetch(PDO::FETCH_ASSOC);
+                error_log("Found admin in admin_users table");
                 
                 // Check if admin is active
                 if($admin['status'] === 'Active') {
@@ -113,6 +116,7 @@ switch($action) {
                     
                     if($admin['password'] === $password || $password === 'admin123' || password_verify($password, $admin['password'])) {
                         $passwordMatch = true;
+                        error_log("Admin password matched");
                     }
                     
                     if($passwordMatch) {
@@ -150,6 +154,7 @@ switch($action) {
         
         // Method 3: Check residents table with admin role
         try {
+            error_log("Checking residents table for admin role: " . $email);
             $residentAdminQuery = "SELECT id, email, password, first_name, last_name, role 
                                   FROM residents 
                                   WHERE email = :email AND role IN ('Admin', 'Super Admin') 
@@ -160,6 +165,7 @@ switch($action) {
             
             if($residentAdminStmt->rowCount() > 0) {
                 $admin = $residentAdminStmt->fetch(PDO::FETCH_ASSOC);
+                error_log("Found admin in residents table");
                 
                 // Check password
                 if($password === 'admin123' || $admin['password'] === $password || password_verify($password, $admin['password'])) {
@@ -195,10 +201,12 @@ switch($action) {
         }
         
         // Method 4: Try regular resident login
+        error_log("Attempting regular resident login for: " . $email);
         $resident->email = $email;
         $resident->password = $password;
         
         if($resident->login()) {
+            error_log("Resident login successful");
             // Set resident session
             $_SESSION['user_id'] = $resident->id;
             $_SESSION['user_email'] = $resident->email;
@@ -226,16 +234,20 @@ switch($action) {
         }
         
         // If all methods fail
+        error_log("All login methods failed for: " . $email);
         echo json_encode(['success' => false, 'message' => 'Invalid email or password']);
         break;
         
     case 'logout':
+        error_log("User logout requested");
         session_destroy();
         echo json_encode(['success' => true, 'message' => 'Logged out successfully']);
         break;
         
     case 'check_session':
+        error_log("Session check requested");
         if(isset($_SESSION['user_id'])) {
+            error_log("Valid session found for user ID: " . $_SESSION['user_id']);
             echo json_encode([
                 'success' => true, 
                 'user' => [
@@ -247,11 +259,13 @@ switch($action) {
                 ]
             ]);
         } else {
+            error_log("No valid session found");
             echo json_encode(['success' => false, 'message' => 'Not logged in']);
         }
         break;
         
     default:
+        error_log("Invalid action requested: " . $action);
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
 }
 ?>

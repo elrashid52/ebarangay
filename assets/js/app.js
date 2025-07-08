@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Check if user is logged in and redirect accordingly
 async function checkSession() {
     try {
+        console.log('Checking session...');
         const response = await fetch('api/auth.php', {
             method: 'POST',
             headers: {
@@ -26,6 +27,7 @@ async function checkSession() {
         
         if (data.success) {
             currentUser = data.user;
+            console.log('Current user set:', currentUser);
             
             // CRITICAL: Check user type and redirect accordingly
             if (currentUser.type === 'admin') {
@@ -47,9 +49,11 @@ async function checkSession() {
                     return;
                 }
                 // If we're already on resident portal, show dashboard
+                console.log('Showing resident dashboard...');
                 showDashboard();
             }
         } else {
+            console.log('No valid session found');
             // No session, show appropriate auth form
             if (window.location.pathname.includes('admin.php')) {
                 // If on admin portal but no session, redirect to unified login
@@ -387,24 +391,33 @@ function showPage(page) {
 
 function updateUserInfo() {
     if (currentUser) {
+        console.log('Updating user info for:', currentUser);
         const userNameElements = document.querySelectorAll('.user-name');
         userNameElements.forEach(el => {
             el.textContent = currentUser.name;
         });
+    } else {
+        console.log('No current user to update info for');
     }
 }
 
 // Dashboard functions
 async function loadDashboardData() {
+    console.log('Loading dashboard data...');
     try {
         console.log('Loading dashboard data...');
         const response = await fetch('api/requests.php?action=get_stats');
+        console.log('Stats response status:', response.status);
         const data = await response.json();
+        console.log('Stats data received:', data);
         
         console.log('Dashboard stats response:', data);
         
         if (data.success) {
             updateDashboardStats(data.stats);
+        } else {
+            console.error('Failed to load stats:', data.message);
+            showMessage('Failed to load dashboard statistics', 'error');
         }
         
         // Load recent requests
@@ -417,6 +430,7 @@ async function loadDashboardData() {
 
 function updateDashboardStats(stats) {
     console.log('Updating dashboard stats:', stats);
+    console.log('Updating dashboard stats:', stats);
     document.getElementById('totalRequests').textContent = stats.total || 0;
     document.getElementById('pendingRequests').textContent = stats.pending || 0;
     document.getElementById('approvedRequests').textContent = stats.approved || 0;
@@ -425,31 +439,39 @@ function updateDashboardStats(stats) {
 }
 
 async function loadRecentRequests() {
+    console.log('Loading recent requests...');
     try {
         console.log('Loading recent requests...');
         const response = await fetch('api/requests.php?action=get_all');
         const data = await response.json();
         
+        console.log('Recent requests response status:', response.status);
         console.log('Recent requests response:', data);
+        console.log('Recent requests data:', data);
         
         if (data.success) {
             displayRecentRequests(data.requests.slice(0, 5));
         } else {
             console.error('Failed to load recent requests:', data.message);
+            showMessage('Failed to load recent requests', 'error');
+        } else {
+            console.error('Failed to load recent requests:', data.message);
         }
     } catch (error) {
         console.error('Failed to load recent requests:', error);
+        showMessage('Error loading recent requests', 'error');
     }
 }
 
 function displayRecentRequests(requests) {
+    console.log('Displaying recent requests:', requests);
     const tbody = document.getElementById('recentRequestsBody');
     if (!tbody) return;
     
     console.log('Displaying recent requests:', requests);
     
     if (requests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b;">No recent requests</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b;">No requests found</td></tr>';
         return;
     }
     
@@ -465,10 +487,13 @@ function displayRecentRequests(requests) {
 
 // Requests page functions
 async function loadRequestsData() {
+    console.log('Loading requests data...');
     try {
         console.log('Loading requests data...');
         const response = await fetch('api/requests.php?action=get_all');
+        console.log('Requests response status:', response.status);
         const data = await response.json();
+        console.log('Requests data received:', data);
         
         console.log('Requests data response:', data);
         
@@ -476,15 +501,20 @@ async function loadRequestsData() {
             displayRequestsTable(data.requests);
         } else {
             console.error('Failed to load requests:', data.message);
+            showMessage('Failed to load requests', 'error');
+        } else {
+            console.error('Failed to load requests:', data.message);
             showMessage('Failed to load requests: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Failed to load requests:', error);
+        showMessage('Error loading requests', 'error');
         showMessage('Failed to load requests', 'error');
     }
 }
 
 function displayRequestsTable(requests) {
+    console.log('Displaying requests table:', requests);
     const tbody = document.getElementById('requestsDataGridBody');
     const emptyState = document.getElementById('requestsEmptyState');
     
@@ -543,19 +573,27 @@ function displayRequestsTable(requests) {
 
 // Certificate request functions
 async function loadCertificateTypes() {
+    console.log('Loading certificate types...');
     try {
         const response = await fetch('api/requests.php?action=get_types');
+        console.log('Certificate types response status:', response.status);
         const data = await response.json();
+        console.log('Certificate types data:', data);
         
         if (data.success) {
             populateCertificateTypes(data.types);
+        } else {
+            console.error('Failed to load certificate types:', data.message);
+            showMessage('Failed to load certificate types', 'error');
         }
     } catch (error) {
         console.error('Failed to load certificate types:', error);
+        showMessage('Error loading certificate types', 'error');
     }
 }
 
 function populateCertificateTypes(types) {
+    console.log('Populating certificate types:', types);
     const select = document.getElementById('certificateType');
     if (!select) return;
     
@@ -913,20 +951,28 @@ function resetCertificateForm() {
 
 // Profile functions
 async function loadProfileData() {
+    console.log('Loading profile data...');
     try {
         const response = await fetch('api/profile.php?action=get_profile');
+        console.log('Profile response status:', response.status);
         const data = await response.json();
+        console.log('Profile data received:', data);
         
         if (data.success) {
             populateProfileForm(data.profile);
             updateProfileHeader(data.profile);
+        } else {
+            console.error('Failed to load profile:', data.message);
+            showMessage('Failed to load profile data', 'error');
         }
     } catch (error) {
         console.error('Failed to load profile:', error);
+        showMessage('Error loading profile', 'error');
     }
 }
 
 function populateProfileForm(profile) {
+    console.log('Populating profile form:', profile);
     const form = document.getElementById('profileForm');
     if (!form) return;
     
@@ -1443,6 +1489,7 @@ function formatDate(dateString) {
 }
 
 function showMessage(message, type) {
+    console.log('Showing message:', message, type);
     // Remove existing messages
     const existingMessages = document.querySelectorAll('.auth-message');
     existingMessages.forEach(msg => msg.remove());
@@ -1467,6 +1514,54 @@ function showMessage(message, type) {
             messageEl.parentNode.removeChild(messageEl);
         }
     }, 5000);
+}
+
+// Add debug function to check API connectivity
+async function debugAPIConnectivity() {
+    console.log('=== API Connectivity Debug ===');
+    
+    // Test session check
+    try {
+        const sessionResponse = await fetch('api/auth.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=check_session'
+        });
+        console.log('Session check status:', sessionResponse.status);
+        const sessionData = await sessionResponse.json();
+        console.log('Session data:', sessionData);
+    } catch (error) {
+        console.error('Session check failed:', error);
+    }
+    
+    // Test stats API
+    try {
+        const statsResponse = await fetch('api/requests.php?action=get_stats');
+        console.log('Stats API status:', statsResponse.status);
+        const statsData = await statsResponse.json();
+        console.log('Stats data:', statsData);
+    } catch (error) {
+        console.error('Stats API failed:', error);
+    }
+    
+    // Test requests API
+    try {
+        const requestsResponse = await fetch('api/requests.php?action=get_all');
+        console.log('Requests API status:', requestsResponse.status);
+        const requestsData = await requestsResponse.json();
+        console.log('Requests data:', requestsData);
+    } catch (error) {
+        console.error('Requests API failed:', error);
+    }
+    
+    console.log('=== End Debug ===');
+}
+
+// Run debug on page load if needed
+if (window.location.search.includes('debug=1')) {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(debugAPIConnectivity, 1000);
+    });
 }
 
 // Demo account function for residents
