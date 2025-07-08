@@ -9,7 +9,6 @@ if(!isset($_SESSION['resident_id'])) {
 }
 
 require_once '../config/database.php';
-require_once '../classes/Request.php';
 a
 $database = new Database();
 $db = $database->getConnection();
