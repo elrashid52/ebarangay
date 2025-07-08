@@ -398,13 +398,36 @@ function updateDocumentsSection(uploadedDocuments, requestId) {
         return;
     }
     
-    // Create document items
+    // Create document items for ONLY the uploaded documents
     Object.entries(uploadedDocuments).forEach(([docType, filename]) => {
         const documentItem = document.createElement('div');
         documentItem.className = 'document-item uploaded';
         
-        // Clean up document type name for display
-        const displayName = docType.replace(/document_/g, '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        // Clean up document type name for display - handle long field names
+        let displayName = docType;
+        
+        // Handle specific document type mappings for better display
+        const displayMappings = {
+            'document_valid_government_issued_id__with_address_': 'Valid Government-issued ID (with address)',
+            'document_proof_of_billing__proof_of_residency__if_not_on_id_': 'Proof of Billing / Proof of Residency',
+            'document_cedula': 'Cedula',
+            'document_no_income_or_proof_of_unemployment': 'No Income or Proof of Unemployment',
+            'valid_id': 'Valid ID',
+            'proof_billing': 'Proof of Billing',
+            'cedula': 'Cedula',
+            'proof_of_residency': 'Proof of Residency',
+            'proof_of_unemployment': 'Proof of Unemployment'
+        };
+        
+        if (displayMappings[docType]) {
+            displayName = displayMappings[docType];
+        } else {
+            // Fallback: clean up the field name
+            displayName = docType
+                .replace(/document_/g, '')
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase());
+        }
         
         documentItem.innerHTML = `
             <div class="document-icon">✅</div>

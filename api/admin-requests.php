@@ -283,8 +283,15 @@ switch($action) {
                 } else {
                     // Try to find by partial match (for long field names)
                     foreach($uploadedDocs as $key => $value) {
-                        if(strpos($key, $documentType) !== false || strpos($documentType, $key) !== false) {
+                        // More specific matching to avoid false positives
+                        $keyLower = strtolower($key);
+                        $docTypeLower = strtolower($documentType);
+                        
+                        if($keyLower === $docTypeLower || 
+                           strpos($keyLower, $docTypeLower) !== false || 
+                           strpos($docTypeLower, $keyLower) !== false) {
                             $filename = $value;
+                            error_log("Found document by partial match: $key -> $value");
                             break;
                         }
                     }
@@ -295,13 +302,18 @@ switch($action) {
                         'proof_billing' => ['document_proof_of_billing__proof_of_residency__if_not_on_id_', 'proof_of_billing', 'proof_billing'],
                         'cedula' => ['document_cedula', 'cedula'],
                         'proof_of_residency' => ['document_proof_of_billing__proof_of_residency__if_not_on_id_', 'proof_of_residency'],
-                        'proof_of_unemployment' => ['document_no_income_or_proof_of_unemployment', 'proof_of_unemployment']
+                        'proof_of_unemployment' => ['document_no_income_or_proof_of_unemployment', 'proof_of_unemployment'],
+                        // Add reverse mappings for the long field names
+                        'document_valid_government_issued_id__with_address_' => ['valid_id', 'government_id'],
+                        'document_proof_of_billing__proof_of_residency__if_not_on_id_' => ['proof_billing', 'proof_of_residency'],
+                        'document_no_income_or_proof_of_unemployment' => ['proof_of_unemployment']
                     ];
                     
                     if(isset($mappings[$documentType])) {
                         foreach($mappings[$documentType] as $possibleKey) {
                             if(isset($uploadedDocs[$possibleKey])) {
                                 $filename = $uploadedDocs[$possibleKey];
+                                error_log("Found document by mapping: $documentType -> $possibleKey -> $filename");
                                 break;
                             }
                         }
