@@ -246,6 +246,9 @@ switch($action) {
                     $_SESSION['resident_email'] = $residentData['email'];
                     $_SESSION['resident_name'] = $residentData['first_name'] . ' ' . $residentData['last_name'];
                     
+                    // Log user login activity
+                    logUserLoginActivity($residentData['id'], 'login', 'Resident logged in successfully');
+                    
                     echo json_encode([
                         'success' => true, 
                         'message' => 'Resident login successful', 
@@ -276,6 +279,12 @@ switch($action) {
         
     case 'logout':
         error_log("User logout requested");
+        
+        // Log logout activity before destroying session
+        if (isset($_SESSION['user_id']) && isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'resident') {
+            logUserLoginActivity($_SESSION['user_id'], 'logout', 'Resident logged out');
+        }
+        
         session_destroy();
         echo json_encode(['success' => true, 'message' => 'Logged out successfully']);
         break;
@@ -303,5 +312,28 @@ switch($action) {
     default:
         error_log("Invalid action requested: " . $action);
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
+}
+
+// Helper function to log user login/logout activities
+function logUserLoginActivity($userId, $action, $details) {
+    try {
+        require_once '../config/database.php';
+        $database = new Database();
+        $db = $database->getConnection();
+        
+        $query = "INSERT INTO user_activity_log (user_id, user_type, action, target_type, target_id, details, ip_address, user_agent) 
+                  VALUES (:user_id, 'resident', :action, 'system', NULL, :details, :ip_address, :user_agent)";
+        
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->bindParam(':action', $action);
+        $stmt->bindParam(':details', $details);
+        $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        $stmt->bindValue(':user_agent', $_SERVER['HTTP_USER_AGENT'] ?? 'unknown');
+        $stmt->execute();
+        
+    } catch (Exception $e) {
+        error_log("Failed to log user activity: " . $e->getMessage());
+    }
 }
 ?>

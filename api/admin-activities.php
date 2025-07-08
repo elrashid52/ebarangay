@@ -24,7 +24,7 @@ switch($action) {
             
             $dateFrom = $_GET['date_from'] ?? '';
             $dateTo = $_GET['date_to'] ?? '';
-            $adminFilter = $_GET['admin_filter'] ?? '';
+            $userFilter = $_GET['admin_filter'] ?? '';
             $actionFilter = $_GET['action_filter'] ?? '';
             $activityType = $_GET['activity_type'] ?? 'all'; // 'admin', 'user', 'all'
             
@@ -57,9 +57,9 @@ switch($action) {
             // Get admin activities
             if ($activityType === 'all' || $activityType === 'admin') {
                 $adminWhere = $whereClause;
-                if ($adminFilter) {
-                    $adminWhere .= ($whereClause ? ' AND ' : 'WHERE ') . "(r.first_name LIKE :admin_filter OR r.last_name LIKE :admin_filter OR r.email LIKE :admin_filter)";
-                    $params[':admin_filter'] = "%$adminFilter%";
+                if ($userFilter) {
+                    $adminWhere .= ($whereClause ? ' AND ' : 'WHERE ') . "(r.first_name LIKE :user_filter OR r.last_name LIKE :user_filter OR r.email LIKE :user_filter)";
+                    $params[':user_filter'] = "%$userFilter%";
                 }
                 
                 $query = "SELECT 
@@ -93,10 +93,10 @@ switch($action) {
             // Get user activities
             if ($activityType === 'all' || $activityType === 'user') {
                 $userWhere = $whereClause;
-                if ($adminFilter) {
-                    $userWhere .= ($whereClause ? ' AND ' : 'WHERE ') . "(r.first_name LIKE :admin_filter OR r.last_name LIKE :admin_filter OR r.email LIKE :admin_filter)";
-                    if (!isset($params[':admin_filter'])) {
-                        $params[':admin_filter'] = "%$adminFilter%";
+                if ($userFilter) {
+                    $userWhere .= ($whereClause ? ' AND ' : 'WHERE ') . "(r.first_name LIKE :user_filter OR r.last_name LIKE :user_filter OR r.email LIKE :user_filter)";
+                    if (!isset($params[':user_filter'])) {
+                        $params[':user_filter'] = "%$userFilter%";
                     }
                 }
                 
@@ -110,7 +110,7 @@ switch($action) {
                             ul.created_at,
                             CONCAT(r.first_name, ' ', r.last_name) as admin_name,
                             r.email as admin_email,
-                            CONCAT('user (', ul.user_type, ')') as activity_type
+                            CONCAT('resident (', COALESCE(ul.user_type, 'user'), ')') as activity_type
                           FROM user_activity_log ul
                           JOIN residents r ON ul.user_id = r.id
                           $userWhere
@@ -194,7 +194,7 @@ switch($action) {
         }
         break;
         
-    case 'log_activity':
+    case 'log_admin_activity':
         try {
             $adminId = $_SESSION['admin_id'];
             $action = $_POST['log_action'] ?? '';
@@ -226,6 +226,43 @@ switch($action) {
             }
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => 'Error logging activity: ' . $e->getMessage()]);
+        }
+        break;
+        
+    case 'log_user_activity':
+        try {
+            $userId = $_POST['user_id'] ?? $_SESSION['user_id'] ?? $_SESSION['resident_id'];
+            $userType = $_POST['user_type'] ?? 'resident';
+            $action = $_POST['log_action'] ?? '';
+            $targetType = $_POST['target_type'] ?? null;
+            $targetId = $_POST['target_id'] ?? null;
+            $details = $_POST['details'] ?? '';
+            
+            if (empty($action) || empty($userId)) {
+                echo json_encode(['success' => false, 'message' => 'Action and user ID are required']);
+                exit;
+            }
+            
+            $query = "INSERT INTO user_activity_log (user_id, user_type, action, target_type, target_id, details, ip_address, user_agent) 
+                      VALUES (:user_id, :user_type, :action, :target_type, :target_id, :details, :ip_address, :user_agent)";
+            
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(':user_id', $userId);
+            $stmt->bindParam(':user_type', $userType);
+            $stmt->bindParam(':action', $action);
+            $stmt->bindParam(':target_type', $targetType);
+            $stmt->bindParam(':target_id', $targetId);
+            $stmt->bindParam(':details', $details);
+            $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+            $stmt->bindValue(':user_agent', $_SERVER['HTTP_USER_AGENT'] ?? 'unknown');
+            
+            if ($stmt->execute()) {
+                echo json_encode(['success' => true, 'message' => 'User activity logged successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to log user activity']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error logging user activity: ' . $e->getMessage()]);
         }
         break;
         

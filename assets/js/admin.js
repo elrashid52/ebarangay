@@ -6,7 +6,36 @@ let currentActivitiesPage = 1;
 document.addEventListener('DOMContentLoaded', function() {
     checkAdminSession();
     initializeAdminEventListeners();
+    
+    // Log admin portal access
+    if (window.location.pathname.includes('admin.php')) {
+        logAdminActivity('page_load', 'system', null, 'Admin portal accessed');
+    }
 });
+
+// Admin activity logging function
+async function logAdminActivity(action, targetType = null, targetId = null, details = '') {
+    try {
+        // Only log if admin is logged in
+        if (!currentAdminUser) {
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('action', 'log_admin_activity');
+        formData.append('log_action', action);
+        if (targetType) formData.append('target_type', targetType);
+        if (targetId) formData.append('target_id', targetId);
+        if (details) formData.append('details', details);
+        
+        await fetch('api/admin-activities.php', {
+            method: 'POST',
+            body: formData
+        });
+    } catch (error) {
+        console.error('Failed to log admin activity:', error);
+    }
+}
 
 // Check if admin is logged in
 async function checkAdminSession() {
@@ -25,6 +54,9 @@ async function checkAdminSession() {
         if (data.success) {
             currentAdminUser = data.admin;
             showAdminDashboard();
+            
+            // Log session check
+            logAdminActivity('session_check', 'system', null, 'Valid admin session found');
         } else {
             showAdminAuth();
         }
@@ -84,6 +116,9 @@ async function handleAdminLogin(e) {
             currentAdminUser = data.admin;
             showAdminMessage('Login successful!', 'success');
             showAdminDashboard();
+            
+            // Log successful admin login
+            logAdminActivity('login', 'system', null, 'Admin logged in successfully');
         } else {
             showAdminMessage(data.message, 'error');
         }
@@ -112,6 +147,9 @@ async function adminSignOut() {
         if (data.success) {
             currentAdminUser = null;
             showAdminMessage('Signed out successfully!', 'success');
+            
+            // Log admin logout
+            logAdminActivity('logout', 'system', null, 'Admin logged out');
             
             // Redirect to unified login page
             setTimeout(() => {
@@ -163,15 +201,19 @@ function showAdminPage(page) {
     switch(page) {
         case 'dashboard':
             loadAdminDashboardData();
+            logAdminActivity('view_dashboard', 'page', null, 'Viewed admin dashboard');
             break;
         case 'residents':
             loadAdminResidentsData();
+            logAdminActivity('view_residents', 'page', null, 'Viewed residents management page');
             break;
         case 'requests':
             loadAdminRequestsData();
+            logAdminActivity('view_requests', 'page', null, 'Viewed requests management page');
             break;
         case 'activities':
             loadAdminActivitiesData();
+            logAdminActivity('view_activities', 'page', null, 'Viewed activity reports page');
             break;
         case 'backup':
             loadBackupData();
@@ -206,6 +248,9 @@ async function loadAdminDashboardData() {
         
         // Load recent requests
         loadAdminRecentRequests();
+        
+        // Log dashboard data load
+        logAdminActivity('load_dashboard_data', 'data', null, 'Admin dashboard statistics loaded');
     } catch (error) {
         console.error('Failed to load admin dashboard data:', error);
     }
@@ -260,6 +305,9 @@ async function loadAdminResidentsData() {
         
         if (data.success) {
             displayAdminResidentsTable(data.residents);
+            
+            // Log residents data load
+            logAdminActivity('load_residents_data', 'data', null, `Loaded ${data.residents.length} residents`);
         }
     } catch (error) {
         console.error('Failed to load residents:', error);
@@ -307,6 +355,9 @@ async function loadAdminRequestsData() {
         
         if (data.success) {
             displayAdminRequestsTable(data.requests);
+            
+            // Log requests data load
+            logAdminActivity('load_requests_data', 'data', null, `Loaded ${data.requests.length} requests`);
         }
     } catch (error) {
         console.error('Failed to load requests:', error);
@@ -351,6 +402,9 @@ async function openAdminRequestReviewModal(requestId) {
         
         if (data.success) {
             showAdminRequestReviewModal(data.request);
+            
+            // Log request review
+            logAdminActivity('review_request', 'request', requestId, 'Opened request review modal');
         } else {
             showAdminMessage(data.message, 'error');
         }
@@ -631,6 +685,9 @@ async function approveAndUploadRequest() {
             closeAdminRequestReviewModal();
             loadAdminRequestsData(); // Refresh the table
             loadAdminDashboardData(); // Refresh dashboard stats
+            
+            // Log approval action
+            logAdminActivity('approve_request', 'request', requestId, `Approved request with status: ${status}`);
         } else {
             showAdminMessage(data.message, 'error');
         }
@@ -668,6 +725,9 @@ async function rejectRequestWithReason() {
             closeAdminRequestReviewModal();
             loadAdminRequestsData(); // Refresh the table
             loadAdminDashboardData(); // Refresh dashboard stats
+            
+            // Log rejection action
+            logAdminActivity('reject_request', 'request', requestId, `Rejected request: ${reason}`);
         } else {
             showAdminMessage(data.message, 'error');
         }
@@ -700,6 +760,9 @@ async function quickApproveRequest(requestId) {
             showAdminMessage(data.message, 'success');
             loadAdminRequestsData();
             loadAdminDashboardData();
+            
+            // Log quick approval
+            logAdminActivity('quick_approve_request', 'request', requestId, 'Quick approved request');
         } else {
             showAdminMessage(data.message, 'error');
         }
@@ -733,6 +796,9 @@ async function quickRejectRequest(requestId) {
             showAdminMessage(data.message, 'success');
             loadAdminRequestsData();
             loadAdminDashboardData();
+            
+            // Log quick rejection
+            logAdminActivity('quick_reject_request', 'request', requestId, `Quick rejected request: ${reason}`);
         } else {
             showAdminMessage(data.message, 'error');
         }
@@ -754,6 +820,9 @@ async function loadAdminActivitiesData() {
         
         // Load activities list
         loadActivitiesPage(1);
+        
+        // Log activities data load
+        logAdminActivity('load_activities_data', 'data', null, 'Activity reports data loaded');
     } catch (error) {
         console.error('Failed to load activities data:', error);
     }
@@ -787,6 +856,9 @@ async function loadActivitiesPage(page) {
         if (data.success) {
             displayActivitiesTable(data.activities);
             updateActivitiesPagination(data.page, data.total_pages);
+            
+            // Log activities page load
+            logAdminActivity('load_activities_page', 'data', null, `Loaded activities page ${page} with ${data.activities.length} activities`);
         }
     } catch (error) {
         console.error('Failed to load activities:', error);
@@ -834,6 +906,12 @@ function updateActivitiesPagination(currentPage, totalPages) {
 
 function filterActivities() {
     loadActivitiesPage(1);
+    
+    // Log filter usage
+    const dateFrom = document.getElementById('activitiesDateFrom')?.value || '';
+    const dateTo = document.getElementById('activitiesDateTo')?.value || '';
+    const activityType = document.getElementById('activitiesTypeFilter')?.value || 'all';
+    logAdminActivity('filter_activities', 'ui', null, `Filtered activities: ${dateFrom} to ${dateTo}, type: ${activityType}`);
 }
 
 // Print activity report
@@ -844,6 +922,9 @@ function printActivityReport() {
     generateActivityReport(content);
     
     modal.style.display = 'flex';
+    
+    // Log report generation
+    logAdminActivity('generate_activity_report', 'report', null, 'Generated activity report for printing');
 }
 
 // Generate comprehensive activity report
@@ -1034,6 +1115,9 @@ function exportActivitiesCSV() {
     document.body.removeChild(link);
     
     showAdminMessage('Activity report exported successfully!', 'success');
+    
+    // Log CSV export
+    logAdminActivity('export_activities_csv', 'report', null, `Exported ${activities.length} activities to CSV`);
 }
 
 // Clear activity filters
@@ -1048,6 +1132,9 @@ function clearActivityFilters() {
     loadActivitiesPage(1);
     
     showAdminMessage('Filters cleared', 'success');
+    
+    // Log filter clear
+    logAdminActivity('clear_activity_filters', 'ui', null, 'Cleared activity filters');
 }
 
 // Backup and Restore Functions
@@ -1913,6 +2000,9 @@ async function deleteResident(residentId) {
             showAdminMessage(data.message, 'success');
             loadAdminResidentsData();
             loadAdminDashboardData();
+            
+            // Log resident deletion
+            logAdminActivity('delete_resident', 'resident', residentId, 'Deleted/deactivated resident');
         } else {
             showAdminMessage(data.message, 'error');
         }

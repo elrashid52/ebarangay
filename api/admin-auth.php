@@ -184,6 +184,9 @@ switch($action) {
                 $_SESSION['admin_id'] = 999;
                 $_SESSION['admin_email'] = 'admin@barangay.gov.ph';
                 $_SESSION['admin_name'] = 'Demo Admin';
+                        // Log admin login activity
+                        logAdminLoginActivity(999, 'login', 'Demo admin logged in successfully');
+                        
                 $_SESSION['admin_role'] = 'Super Admin';
                 
                 echo json_encode([
@@ -203,6 +206,11 @@ switch($action) {
         break;
         
     case 'logout':
+        // Log admin logout before destroying session
+        if (isset($_SESSION['admin_id'])) {
+            logAdminLoginActivity($_SESSION['admin_id'], 'logout', 'Admin logged out');
+        }
+        
         session_destroy();
         echo json_encode(['success' => true, 'message' => 'Logged out successfully']);
         break;
@@ -225,5 +233,28 @@ switch($action) {
         
     default:
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
+}
+
+// Helper function to log admin login/logout activities
+function logAdminLoginActivity($adminId, $action, $details) {
+    try {
+        require_once '../config/database.php';
+        $database = new Database();
+        $db = $database->getConnection();
+        
+        $query = "INSERT INTO admin_activity_log (admin_id, action, target_type, target_id, details, ip_address, user_agent) 
+                  VALUES (:admin_id, :action, 'system', NULL, :details, :ip_address, :user_agent)";
+        
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':admin_id', $adminId);
+        $stmt->bindParam(':action', $action);
+        $stmt->bindParam(':details', $details);
+        $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        $stmt->bindValue(':user_agent', $_SERVER['HTTP_USER_AGENT'] ?? 'unknown');
+        $stmt->execute();
+        
+    } catch (Exception $e) {
+        error_log("Failed to log admin activity: " . $e->getMessage());
+    }
 }
 ?>

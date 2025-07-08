@@ -8,7 +8,37 @@ let uploadedDocuments = {};
 document.addEventListener('DOMContentLoaded', function() {
     checkSession();
     initializeEventListeners();
+    
+    // Log page load activity for residents
+    if (window.location.pathname.includes('index.php') || window.location.pathname.endsWith('/')) {
+        logUserActivity('page_load', 'system', null, 'Resident portal accessed');
+    }
 });
+
+// User activity logging function
+async function logUserActivity(action, targetType = null, targetId = null, details = '') {
+    try {
+        // Only log if user is logged in as resident
+        if (!currentUser || currentUser.type !== 'resident') {
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('action', 'log_user_activity');
+        formData.append('log_action', action);
+        formData.append('user_type', 'resident');
+        if (targetType) formData.append('target_type', targetType);
+        if (targetId) formData.append('target_id', targetId);
+        if (details) formData.append('details', details);
+        
+        await fetch('api/admin-activities.php', {
+            method: 'POST',
+            body: formData
+        });
+    } catch (error) {
+        console.error('Failed to log user activity:', error);
+    }
+}
 
 // Check if user is logged in and redirect accordingly
 async function checkSession() {
@@ -50,6 +80,9 @@ async function checkSession() {
                 }
                 // If we're already on resident portal, show dashboard
                 console.log('Showing resident dashboard...');
+                
+                // Log session check activity
+                logUserActivity('session_check', 'system', null, 'Valid session found');
                 showDashboard();
             }
         } else {
@@ -249,6 +282,9 @@ async function handleSignIn(e) {
             } else {
                 console.log('Resident login detected, showing dashboard...');
                 // Set resident session variables for compatibility
+                
+                // Log successful login
+                logUserActivity('login', 'system', null, 'Resident logged in successfully');
                 if (currentUser.type === 'resident') {
                     // These are needed for the resident portal to work
                     console.log('Setting up resident session...');
@@ -295,6 +331,8 @@ async function handleSignUp(e) {
         if (data.success) {
             showMessage('Registration successful! Please sign in.', 'success');
             showSignInForm();
+            
+            // Log registration activity (will be logged after login)
         } else {
             showMessage(data.message, 'error');
         }
@@ -319,6 +357,9 @@ async function signOut() {
         if (data.success) {
             currentUser = null;
             showMessage('Signed out successfully!', 'success');
+            
+            // Log logout activity before clearing session
+            logUserActivity('logout', 'system', null, 'Resident logged out');
             
             // ALWAYS redirect to unified login page (index.php)
             console.log('Signing out, redirecting to unified login page...');
@@ -384,16 +425,20 @@ function showPage(page) {
     switch(page) {
         case 'dashboard':
             loadDashboardData();
+            logUserActivity('view_dashboard', 'page', null, 'Viewed dashboard page');
             break;
         case 'requests':
             loadRequestsData();
+            logUserActivity('view_requests', 'page', null, 'Viewed requests page');
             break;
         case 'profile':
             loadProfileData();
+            logUserActivity('view_profile', 'page', null, 'Viewed profile page');
             break;
         case 'certificate':
             loadCertificateTypes();
             resetCertificateForm();
+            logUserActivity('view_certificate_form', 'page', null, 'Viewed certificate request form');
             break;
     }
 }
@@ -432,6 +477,9 @@ async function loadDashboardData() {
         
         // Load recent requests
         loadRecentRequests();
+        
+        // Log dashboard data load
+        logUserActivity('load_dashboard_data', 'data', null, 'Dashboard statistics loaded');
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
         showMessage('Failed to load dashboard data', 'error');
@@ -509,6 +557,9 @@ async function loadRequestsData() {
         if (data.success) {
             console.log('Requests data loaded:', data.requests.length, 'requests');
             displayRequestsTable(data.requests);
+            
+            // Log requests data load
+            logUserActivity('load_requests_data', 'data', null, `Loaded ${data.requests.length} requests`);
         } else {
             console.error('Failed to load requests data:', data.message);
             // Show error message to user
@@ -914,6 +965,9 @@ async function handleCertificateRequest(e) {
             showMessage('Certificate request submitted successfully!', 'success');
             resetCertificateForm();
             showPage('requests');
+            
+            // Log certificate request submission
+            logUserActivity('submit_certificate_request', 'request', data.request_id, `Submitted ${selectedCertificateType.name} request`);
         } else {
             showMessage(data.message || 'Failed to submit request', 'error');
         }
@@ -970,6 +1024,9 @@ async function loadProfileData() {
             console.log('Profile data loaded');
             populateProfileForm(data.profile);
             updateProfileHeader(data.profile);
+            
+            // Log profile data load
+            logUserActivity('load_profile_data', 'profile', null, 'Profile information loaded');
         } else {
             console.error('Failed to load profile:', data.message);
             showMessage('Failed to load profile: ' + data.message, 'error');
@@ -1049,6 +1106,9 @@ async function handleProfileUpdate(e) {
         if (data.success) {
             showMessage('Profile updated successfully!', 'success');
             loadProfileData(); // Reload to show updated data
+            
+            // Log profile update
+            logUserActivity('update_profile', 'profile', null, 'Profile information updated');
         } else {
             showMessage(data.message, 'error');
         }
@@ -1077,6 +1137,9 @@ async function handleProfilePictureUpload(e) {
         if (data.success) {
             showMessage('Profile picture updated successfully!', 'success');
             document.getElementById('profilePicture').src = data.path;
+            
+            // Log profile picture update
+            logUserActivity('update_profile_picture', 'profile', null, 'Profile picture updated');
         } else {
             showMessage(data.message, 'error');
         }
@@ -1114,6 +1177,9 @@ async function handleChangePassword(e) {
         if (data.success) {
             showMessage('Password changed successfully!', 'success');
             closeChangePasswordModal();
+            
+            // Log password change
+            logUserActivity('change_password', 'security', null, 'Password changed successfully');
         } else {
             showMessage(data.message, 'error');
         }
@@ -1232,6 +1298,10 @@ async function handleResubmitSubmit(e) {
             showMessage('Request resubmitted successfully!', 'success');
             closeResubmitModal();
             loadRequestsData(); // Refresh the requests table
+            
+            // Log request resubmission
+            const requestId = formData.get('request_id');
+            logUserActivity('resubmit_request', 'request', requestId, 'Request resubmitted with new documents');
         } else {
             showMessage(data.message || 'Failed to resubmit request', 'error');
         }
@@ -1268,6 +1338,9 @@ async function viewRequestDetails(requestId) {
             if (request) {
                 showRequestDetailsModal(request);
             }
+            
+            // Log request details view
+            logUserActivity('view_request_details', 'request', requestId, 'Viewed request details');
         }
     } catch (error) {
         console.error('Failed to load request details:', error);
@@ -1360,6 +1433,9 @@ function closeRequestDetailsModal() {
 // Document actions
 async function downloadDocument(requestId) {
     try {
+        // Log download attempt
+        logUserActivity('download_document', 'request', requestId, 'Downloaded certificate document');
+        
         const response = await fetch(`api/requests.php?action=download_document&request_id=${requestId}`);
         
         if (response.ok) {
@@ -1384,6 +1460,9 @@ async function downloadDocument(requestId) {
 
 async function viewDocument(requestId) {
     try {
+        // Log document view
+        logUserActivity('view_document', 'request', requestId, 'Viewed document in browser');
+        
         window.open(`api/requests.php?action=view_document&request_id=${requestId}`, '_blank');
     } catch (error) {
         console.error('View failed:', error);
@@ -1449,6 +1528,9 @@ async function handleRequestSubmit(e) {
             closeModal();
             loadRequestsData();
             loadDashboardData();
+            
+            // Log legacy request submission
+            logUserActivity('submit_legacy_request', 'request', data.request_id, `Submitted ${formData.get('type')} request`);
         } else {
             showMessage(data.message, 'error');
         }
@@ -1463,6 +1545,8 @@ function filterRequests() {
     const filter = document.getElementById('statusFilter').value;
     const rows = document.querySelectorAll('#requestsDataGridBody tr');
     
+    // Log filter usage
+    logUserActivity('filter_requests', 'ui', null, `Filtered requests by status: ${filter || 'all'}`);
     rows.forEach(row => {
         if (!filter) {
             row.style.display = '';
