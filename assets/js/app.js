@@ -397,8 +397,11 @@ function updateUserInfo() {
 // Dashboard functions
 async function loadDashboardData() {
     try {
+        console.log('Loading dashboard data...');
         const response = await fetch('api/requests.php?action=get_stats');
         const data = await response.json();
+        
+        console.log('Dashboard stats response:', data);
         
         if (data.success) {
             updateDashboardStats(data.stats);
@@ -408,10 +411,12 @@ async function loadDashboardData() {
         loadRecentRequests();
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
+        showMessage('Failed to load dashboard data', 'error');
     }
 }
 
 function updateDashboardStats(stats) {
+    console.log('Updating dashboard stats:', stats);
     document.getElementById('totalRequests').textContent = stats.total || 0;
     document.getElementById('pendingRequests').textContent = stats.pending || 0;
     document.getElementById('approvedRequests').textContent = stats.approved || 0;
@@ -421,11 +426,16 @@ function updateDashboardStats(stats) {
 
 async function loadRecentRequests() {
     try {
+        console.log('Loading recent requests...');
         const response = await fetch('api/requests.php?action=get_all');
         const data = await response.json();
         
+        console.log('Recent requests response:', data);
+        
         if (data.success) {
             displayRecentRequests(data.requests.slice(0, 5));
+        } else {
+            console.error('Failed to load recent requests:', data.message);
         }
     } catch (error) {
         console.error('Failed to load recent requests:', error);
@@ -435,6 +445,8 @@ async function loadRecentRequests() {
 function displayRecentRequests(requests) {
     const tbody = document.getElementById('recentRequestsBody');
     if (!tbody) return;
+    
+    console.log('Displaying recent requests:', requests);
     
     if (requests.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b;">No recent requests</td></tr>';
@@ -454,14 +466,21 @@ function displayRecentRequests(requests) {
 // Requests page functions
 async function loadRequestsData() {
     try {
+        console.log('Loading requests data...');
         const response = await fetch('api/requests.php?action=get_all');
         const data = await response.json();
         
+        console.log('Requests data response:', data);
+        
         if (data.success) {
             displayRequestsTable(data.requests);
+        } else {
+            console.error('Failed to load requests:', data.message);
+            showMessage('Failed to load requests: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Failed to load requests:', error);
+        showMessage('Failed to load requests', 'error');
     }
 }
 
@@ -470,6 +489,8 @@ function displayRequestsTable(requests) {
     const emptyState = document.getElementById('requestsEmptyState');
     
     if (!tbody) return;
+    
+    console.log('Displaying requests table:', requests);
     
     if (requests.length === 0) {
         tbody.innerHTML = '';

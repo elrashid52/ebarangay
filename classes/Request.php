@@ -24,6 +24,7 @@ class Request {
 
     // Get all requests for a resident
     public function getResidentRequests($resident_id) {
+        error_log("Getting requests for resident ID: " . $resident_id);
         $query = "SELECT r.*, rt.processing_fee as type_fee 
                   FROM " . $this->table_name . " r
                   LEFT JOIN request_types rt ON r.type = rt.name
@@ -34,11 +35,13 @@ class Request {
         $stmt->bindParam(':resident_id', $resident_id);
         $stmt->execute();
 
+        error_log("Query executed, found " . $stmt->rowCount() . " requests");
         return $stmt;
     }
 
     // Create new request
     public function create() {
+        error_log("Creating new request for resident ID: " . $this->resident_id);
         // Check if processing_fee column exists, if not, create without it
         $query = "INSERT INTO " . $this->table_name . " 
                   SET type=:type, purpose=:purpose, resident_id=:resident_id, 
@@ -66,14 +69,18 @@ class Request {
         }
 
         if($stmt->execute()) {
-            return $this->conn->lastInsertId();
+            $request_id = $this->conn->lastInsertId();
+            error_log("Request created successfully with ID: " . $request_id);
+            return $request_id;
         }
 
+        error_log("Failed to create request");
         return false;
     }
 
     // Get request statistics
     public function getStats($resident_id) {
+        error_log("Getting stats for resident ID: " . $resident_id);
         $query = "SELECT 
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
@@ -87,11 +94,14 @@ class Request {
         $stmt->bindParam(':resident_id', $resident_id);
         $stmt->execute();
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+        error_log("Stats retrieved: " . print_r($stats, true));
+        return $stats;
     }
 
     // Get request types
     public function getRequestTypes() {
+        error_log("Getting request types");
         $query = "SELECT * FROM request_types WHERE is_active = 1 ORDER BY name";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -100,6 +110,7 @@ class Request {
 
     // Get blotter reports count
     public function getBlotterCount($resident_id) {
+        error_log("Getting blotter count for resident ID: " . $resident_id);
         // Check if blotter_reports table exists
         try {
             $query = "SELECT COUNT(*) as count FROM blotter_reports WHERE complainant_id = :resident_id";
@@ -107,8 +118,10 @@ class Request {
             $stmt->bindParam(':resident_id', $resident_id);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            error_log("Blotter count: " . $result['count']);
             return $result['count'];
         } catch (Exception $e) {
+            error_log("Blotter table doesn't exist, returning 0");
             // If table doesn't exist, return 0
             return 0;
         }

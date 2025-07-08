@@ -126,6 +126,7 @@ class Resident {
 
     // Get resident profile
     public function getProfile($resident_id) {
+        error_log("Getting profile for resident ID: " . $resident_id);
         $query = "SELECT * FROM " . $this->table_name . " 
                   WHERE id = :id LIMIT 0,1";
 
@@ -133,11 +134,19 @@ class Resident {
         $stmt->bindParam(':id', $resident_id);
         $stmt->execute();
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($profile) {
+            error_log("Profile found for resident ID: " . $resident_id);
+        } else {
+            error_log("No profile found for resident ID: " . $resident_id);
+        }
+        return $profile;
     }
 
     // Update comprehensive profile
     public function updateProfile($resident_id, $profileData) {
+        error_log("Updating profile for resident ID: " . $resident_id);
+        error_log("Profile data: " . print_r($profileData, true));
         $query = "UPDATE " . $this->table_name . " 
                   SET first_name=:first_name, last_name=:last_name, middle_name=:middle_name,
                       sex=:sex, birth_date=:birth_date, age=:age, civil_status=:civil_status, 
@@ -200,11 +209,18 @@ class Resident {
         $stmt->bindParam(":monthly_income_range", $profileData['monthly_income_range']);
         $stmt->bindParam(":id", $resident_id);
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if ($result) {
+            error_log("Profile updated successfully");
+        } else {
+            error_log("Failed to update profile: " . print_r($stmt->errorInfo(), true));
+        }
+        return $result;
     }
 
     // Update profile picture
     public function updateProfilePicture($resident_id, $picturePath) {
+        error_log("Updating profile picture for resident ID: " . $resident_id);
         $query = "UPDATE " . $this->table_name . " 
                   SET profile_picture=:profile_picture 
                   WHERE id=:id";
@@ -213,11 +229,18 @@ class Resident {
         $stmt->bindParam(":profile_picture", $picturePath);
         $stmt->bindParam(":id", $resident_id);
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if ($result) {
+            error_log("Profile picture updated successfully");
+        } else {
+            error_log("Failed to update profile picture");
+        }
+        return $result;
     }
 
     // Change password
     public function changePassword($resident_id, $currentPassword, $newPassword) {
+        error_log("Changing password for resident ID: " . $resident_id);
         // First verify current password
         $query = "SELECT password FROM " . $this->table_name . " WHERE id = :id";
         $stmt = $this->conn->prepare($query);
@@ -227,6 +250,7 @@ class Resident {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if(!$row || !password_verify($currentPassword, $row['password'])) {
+            error_log("Current password verification failed");
             return false;
         }
         
@@ -240,7 +264,13 @@ class Resident {
         $stmt->bindParam(":password", $hashedPassword);
         $stmt->bindParam(":id", $resident_id);
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if ($result) {
+            error_log("Password changed successfully");
+        } else {
+            error_log("Failed to change password");
+        }
+        return $result;
     }
 }
 ?>

@@ -20,6 +20,7 @@ $resident_id = $_SESSION['resident_id'];
 
 switch($action) {
     case 'get_all':
+        error_log("Getting all requests for resident ID: " . $resident_id);
         $stmt = $request->getResidentRequests($resident_id);
         $requests = [];
         
@@ -49,15 +50,18 @@ switch($action) {
             ];
         }
         
+        error_log("Found " . count($requests) . " requests for resident");
         echo json_encode(['success' => true, 'requests' => $requests]);
         break;
         
     case 'create':
+        error_log("Creating new request for resident ID: " . $resident_id);
         $type = $_POST['type'] ?? '';
         $purpose = $_POST['purpose'] ?? '';
         $details = $_POST['details'] ?? '{}';
         
         if(empty($type) || empty($purpose)) {
+            error_log("Missing required fields: type=$type, purpose=$purpose");
             echo json_encode(['success' => false, 'message' => 'Type and purpose are required']);
             exit;
         }
@@ -79,8 +83,10 @@ switch($action) {
         $request_id = $request->create();
         
         if($request_id) {
+            error_log("Request created successfully with ID: " . $request_id);
             echo json_encode(['success' => true, 'message' => 'Request submitted successfully', 'request_id' => $request_id]);
         } else {
+            error_log("Failed to create request");
             echo json_encode(['success' => false, 'message' => 'Failed to submit request']);
         }
         break;
@@ -89,6 +95,7 @@ switch($action) {
         // Add debug logging
         error_log("Certificate request received: " . print_r($_POST, true));
         error_log("Files received: " . print_r($_FILES, true));
+        error_log("Resident ID: " . $resident_id);
         
         $certificate_type = $_POST['certificate_type'] ?? '';
         $purpose = $_POST['purpose'] ?? '';
@@ -97,6 +104,7 @@ switch($action) {
         $payment_reference = $_POST['payment_reference'] ?? '';
         
         if(empty($certificate_type) || empty($purpose)) {
+            error_log("Missing required fields for certificate request");
             echo json_encode(['success' => false, 'message' => 'Certificate type and purpose are required']);
             exit;
         }
@@ -116,11 +124,13 @@ switch($action) {
                 // Validate file
                 $allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
                 if(!in_array($file['type'], $allowedTypes)) {
+                    error_log("Invalid file type: " . $file['type']);
                     echo json_encode(['success' => false, 'message' => 'Only PDF, JPG, and PNG files are allowed']);
                     exit;
                 }
                 
                 if($file['size'] > 5 * 1024 * 1024) {
+                    error_log("File too large: " . $file['size']);
                     echo json_encode(['success' => false, 'message' => 'File size must be less than 5MB']);
                     exit;
                 }
@@ -132,6 +142,7 @@ switch($action) {
                 
                 if(move_uploaded_file($file['tmp_name'], $filepath)) {
                     $uploadedDocuments[$fieldName] = $filename;
+                    error_log("File uploaded successfully: " . $filename);
                 }
             }
         }
@@ -174,13 +185,16 @@ switch($action) {
         $request_id = $request->create();
         
         if($request_id) {
+            error_log("Certificate request created successfully with ID: " . $request_id);
             echo json_encode(['success' => true, 'message' => 'Certificate request submitted successfully', 'request_id' => $request_id]);
         } else {
+            error_log("Failed to create certificate request");
             echo json_encode(['success' => false, 'message' => 'Failed to submit certificate request']);
         }
         break;
         
     case 'download_document':
+        error_log("Download document request for resident ID: " . $resident_id);
         $request_id = $_GET['request_id'] ?? '';
         
         if(empty($request_id)) {
@@ -199,11 +213,13 @@ switch($action) {
         $requestData = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if(!$requestData) {
+            error_log("Request not found or not approved for download");
             echo json_encode(['success' => false, 'message' => 'Request not found or not approved']);
             exit;
         }
         
         if(!$requestData['can_download']) {
+            error_log("Document not available for download");
             echo json_encode(['success' => false, 'message' => 'This document is not available for download']);
             exit;
         }
@@ -211,6 +227,7 @@ switch($action) {
         $filePath = '../uploads/certificates/' . $requestData['document_path'];
         
         if(!file_exists($filePath)) {
+            error_log("Document file not found: " . $filePath);
             echo json_encode(['success' => false, 'message' => 'Document file not found']);
             exit;
         }
@@ -226,6 +243,7 @@ switch($action) {
         break;
         
     case 'view_document':
+        error_log("View document request for resident ID: " . $resident_id);
         $request_id = $_GET['request_id'] ?? '';
         $document_type = $_GET['document_type'] ?? '';
         
@@ -260,28 +278,34 @@ switch($action) {
                         readfile($filepath);
                         exit;
                     } else {
+                        error_log("File not found on server: " . $filepath);
                         echo json_encode(['success' => false, 'message' => 'File not found on server']);
                         exit;
                     }
                 } else {
+                    error_log("Document type not found in request: " . $document_type);
                     echo json_encode(['success' => false, 'message' => 'Document type not found in request']);
                     exit;
                 }
             } else {
+                error_log("Request not found: " . $request_id);
                 echo json_encode(['success' => false, 'message' => 'Request not found']);
                 exit;
             }
         } catch (Exception $e) {
+            error_log("Error viewing document: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error viewing document: ' . $e->getMessage()]);
         }
         break;
         
     case 'reupload_request':
+        error_log("Reupload request for resident ID: " . $resident_id);
         $request_id = $_POST['request_id'] ?? '';
         $purpose = $_POST['purpose'] ?? '';
         $additional_notes = $_POST['additional_notes'] ?? '';
         
         if(empty($request_id) || empty($purpose)) {
+            error_log("Missing required fields for reupload");
             echo json_encode(['success' => false, 'message' => 'Request ID and purpose are required']);
             exit;
         }
@@ -297,6 +321,7 @@ switch($action) {
         $requestData = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if(!$requestData || !$requestData['can_reupload']) {
+            error_log("Request cannot be reuploaded");
             echo json_encode(['success' => false, 'message' => 'Request cannot be reuploaded']);
             exit;
         }
@@ -316,11 +341,13 @@ switch($action) {
                 // Validate file
                 $allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
                 if(!in_array($file['type'], $allowedTypes)) {
+                    error_log("Invalid file type for reupload: " . $file['type']);
                     echo json_encode(['success' => false, 'message' => 'Only PDF, JPG, and PNG files are allowed']);
                     exit;
                 }
                 
                 if($file['size'] > 5 * 1024 * 1024) {
+                    error_log("File too large for reupload: " . $file['size']);
                     echo json_encode(['success' => false, 'message' => 'File size must be less than 5MB']);
                     exit;
                 }
@@ -332,6 +359,7 @@ switch($action) {
                 
                 if(move_uploaded_file($file['tmp_name'], $filepath)) {
                     $uploadedDocuments[$fieldName] = $filename;
+                    error_log("File reuploaded successfully: " . $filename);
                 }
             }
         }
@@ -355,20 +383,25 @@ switch($action) {
         $updateStmt->bindParam(':resident_id', $resident_id);
         
         if($updateStmt->execute()) {
+            error_log("Request resubmitted successfully");
             echo json_encode(['success' => true, 'message' => 'Request resubmitted successfully with new documents']);
         } else {
+            error_log("Failed to resubmit request");
             echo json_encode(['success' => false, 'message' => 'Failed to resubmit request']);
         }
         break;
         
     case 'get_stats':
+        error_log("Getting stats for resident ID: " . $resident_id);
         $stats = $request->getStats($resident_id);
         $blotter_count = $request->getBlotterCount($resident_id);
         $stats['blotter_reports'] = $blotter_count;
+        error_log("Stats retrieved: " . print_r($stats, true));
         echo json_encode(['success' => true, 'stats' => $stats]);
         break;
         
     case 'get_types':
+        error_log("Getting request types");
         // Return updated certificate types with new requirements
         $types = [
             [
@@ -431,10 +464,12 @@ switch($action) {
             ]
         ];
         
+        error_log("Returning " . count($types) . " request types");
         echo json_encode(['success' => true, 'types' => $types]);
         break;
         
     default:
+        error_log("Invalid action: " . $action);
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
 }
 ?>
