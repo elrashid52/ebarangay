@@ -21,7 +21,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 switch($action) {
     case 'create_backup':
         try {
-            $backupType = $_POST['backup_type'] ?? 'full'; // 'database', 'files', 'full'
+            $backupType = $_POST['backup_type'] ?? 'full';
             $backupName = trim($_POST['backup_name'] ?? '');
             if (empty($backupName)) {
                 $backupName = 'backup_' . date('Y-m-d_H-i-s');
@@ -32,12 +32,14 @@ switch($action) {
             
             $backupDir = '../backups/';
             if (!is_dir($backupDir)) {
-                mkdir($backupDir, 0755, true);
+                if (!mkdir($backupDir, 0755, true)) {
+                    throw new Exception('Failed to create backup directory');
+                }
             }
             
             // Check if backup directory is writable
             if (!is_writable($backupDir)) {
-                throw new Exception('Backup directory is not writable');
+                throw new Exception('Backup directory is not writable. Please check permissions.');
             }
             
             $result = [];
@@ -53,10 +55,10 @@ switch($action) {
                 }
             }
             
-            // Files backup
+            // Files backup (using tar/folder copy instead of ZipArchive)
             if ($backupType === 'files' || $backupType === 'full') {
-                $filesBackupFile = $backupDir . $backupName . '_files.zip';
-                $filesResult = createFilesBackup($filesBackupFile);
+                $filesBackupFile = $backupDir . $backupName . '_files';
+                $filesResult = createFilesBackupAlternative($filesBackupFile);
                 $result['files'] = $filesResult;
                 if ($filesResult['success'] && isset($filesResult['size'])) {
                     $totalSize += $filesResult['size'];
@@ -69,29 +71,33 @@ switch($action) {
             // Check if any backup failed
             $hasFailures = false;
             $errorMessages = [];
+            $successMessages = [];
             
             foreach ($result as $type => $res) {
                 if (!$res['success']) {
                     $hasFailures = true;
-                    $errorMessages[] = "$type: " . $res['message'];
+                    $errorMessages[] = ucfirst($type) . ": " . $res['message'];
+                } else {
+                    $successMessages[] = ucfirst($type) . " backup created successfully";
                 }
             }
             
+            $message = implode(', ', $successMessages);
             if ($hasFailures) {
-                echo json_encode([
-                    'success' => false, 
-                    'message' => 'Backup partially failed: ' . implode(', ', $errorMessages),
-                    'result' => $result
-                ]);
-            } else {
-                echo json_encode([
-                    'success' => true, 
-                    'message' => 'Backup created successfully',
-                    'backup_name' => $backupName,
-                    'total_size' => $totalSize,
-                    'result' => $result
-                ]);
+                $message = 'Backup partially completed. ' . $message;
+                if (!empty($errorMessages)) {
+                    $message .= '. Errors: ' . implode(', ', $errorMessages);
+                }
             }
+            
+            echo json_encode([
+                'success' => !empty($successMessages), 
+                'message' => $message,
+                'backup_name' => $backupName,
+                'total_size' => $totalSize,
+                'result' => $result,
+                'has_failures' => $hasFailures
+            ]);
             
         } catch (Exception $e) {
             error_log("Backup creation error: " . $e->getMessage());
@@ -135,9 +141,18 @@ switch($action) {
                     }
                 }
                 
+                // Check for files backup directories
+                foreach ($files as $file) {
+                    if ($file != '.' && $file != '..' && is_dir($backupDir . $file) && strpos($file, '_files') !== false) {
+                        $dirSize = getDirSize($backupDir . $file);
+                        $stats['total_size'] += $dirSize;
+                    }
+                }
+                
                 // Format total size
                 $stats['total_size_formatted'] = formatBytes($stats['total_size']);
             }
+            
             echo json_encode([
                 'success' => true,
                 'stats' => $stats
@@ -158,31 +173,49 @@ switch($action) {
                 $backupGroups = [];
                 
                 foreach ($files as $file) {
-                    if ($file != '.' && $file != '..' && !is_dir($backupDir . $file)) {
+                    if ($file != '.' && $file != '..') {
+                        $filePath = $backupDir . $file;
                         $fileInfo = pathinfo($file);
-                        $baseName = preg_replace('/_(database|files)$/', '', $fileInfo['filename']);
                         
-                        if (!isset($backupGroups[$baseName])) {
-                            $backupGroups[$baseName] = [
-                                'name' => $baseName,
-                                'created_at' => date('Y-m-d H:i:s', filemtime($backupDir . $file)),
-                                'database' => false,
-                                'files' => false,
-                                'size' => 0
-                            ];
-                        }
-                        
-                        if (strpos($file, '_database.sql') !== false) {
-                            $backupGroups[$baseName]['database'] = true;
-                            $backupGroups[$baseName]['database_file'] = $file;
-                            $backupGroups[$baseName]['database_size'] = filesize($backupDir . $file);
-                        } elseif (strpos($file, '_files.zip') !== false) {
+                        if (is_file($filePath)) {
+                            $baseName = preg_replace('/_(database|files)$/', '', $fileInfo['filename']);
+                            
+                            if (!isset($backupGroups[$baseName])) {
+                                $backupGroups[$baseName] = [
+                                    'name' => $baseName,
+                                    'created_at' => date('Y-m-d H:i:s', filemtime($filePath)),
+                                    'database' => false,
+                                    'files' => false,
+                                    'size' => 0
+                                ];
+                            }
+                            
+                            if (strpos($file, '_database.sql') !== false) {
+                                $backupGroups[$baseName]['database'] = true;
+                                $backupGroups[$baseName]['database_file'] = $file;
+                                $backupGroups[$baseName]['database_size'] = filesize($filePath);
+                            }
+                            
+                            $backupGroups[$baseName]['size'] += filesize($filePath);
+                        } elseif (is_dir($filePath) && strpos($file, '_files') !== false) {
+                            $baseName = str_replace('_files', '', $file);
+                            
+                            if (!isset($backupGroups[$baseName])) {
+                                $backupGroups[$baseName] = [
+                                    'name' => $baseName,
+                                    'created_at' => date('Y-m-d H:i:s', filemtime($filePath)),
+                                    'database' => false,
+                                    'files' => false,
+                                    'size' => 0
+                                ];
+                            }
+                            
                             $backupGroups[$baseName]['files'] = true;
-                            $backupGroups[$baseName]['files_file'] = $file;
-                            $backupGroups[$baseName]['files_size'] = filesize($backupDir . $file);
+                            $backupGroups[$baseName]['files_dir'] = $file;
+                            $dirSize = getDirSize($filePath);
+                            $backupGroups[$baseName]['files_size'] = $dirSize;
+                            $backupGroups[$baseName]['size'] += $dirSize;
                         }
-                        
-                        $backupGroups[$baseName]['size'] += filesize($backupDir . $file);
                     }
                 }
                 
@@ -191,9 +224,24 @@ switch($action) {
                     return strtotime($b['created_at']) - strtotime($a['created_at']);
                 });
                 
-                // Format sizes
+                // Format sizes and determine status
                 foreach ($backups as &$backup) {
                     $backup['size_formatted'] = formatBytes($backup['size']);
+                    
+                    // Determine backup status
+                    if ($backup['database'] && $backup['files']) {
+                        $backup['status'] = 'Complete';
+                        $backup['type'] = 'Full Backup';
+                    } elseif ($backup['database']) {
+                        $backup['status'] = 'Partial';
+                        $backup['type'] = 'Database Only';
+                    } elseif ($backup['files']) {
+                        $backup['status'] = 'Partial';
+                        $backup['type'] = 'Files Only';
+                    } else {
+                        $backup['status'] = 'Incomplete';
+                        $backup['type'] = 'Unknown';
+                    }
                 }
             }
             
@@ -230,19 +278,19 @@ switch($action) {
             
             // Files restore
             if ($restoreType === 'files' || $restoreType === 'full') {
-                $filesBackupFile = $backupDir . $backupName . '_files.zip';
-                if (file_exists($filesBackupFile)) {
-                    $filesResult = restoreFilesBackup($filesBackupFile);
+                $filesBackupDir = $backupDir . $backupName . '_files';
+                if (is_dir($filesBackupDir)) {
+                    $filesResult = restoreFilesBackupAlternative($filesBackupDir);
                     $result['files'] = $filesResult;
                 } else {
-                    $result['files'] = ['success' => false, 'message' => 'Files backup file not found'];
+                    $result['files'] = ['success' => false, 'message' => 'Files backup directory not found'];
                 }
             }
             
             // Log restore activity
             logBackupActivity($_SESSION['admin_id'], 'restore_backup', $restoreType, $backupName);
             
-            // Check if any restore failed
+            // Check results
             $hasFailures = false;
             $errorMessages = [];
             $successMessages = [];
@@ -250,21 +298,29 @@ switch($action) {
             foreach ($result as $type => $res) {
                 if (!$res['success']) {
                     $hasFailures = true;
-                    $errorMessages[] = "$type: " . $res['message'];
+                    $errorMessages[] = ucfirst($type) . ": " . $res['message'];
                 } else {
-                    $successMessages[] = "$type restored successfully";
+                    $successMessages[] = ucfirst($type) . " restored successfully";
                 }
             }
             
             $message = implode(', ', $successMessages);
             if ($hasFailures) {
-                $message .= '. Errors: ' . implode(', ', $errorMessages);
+                if (!empty($successMessages)) {
+                    $message = 'Restore partially completed. ' . $message;
+                } else {
+                    $message = 'Restore failed';
+                }
+                if (!empty($errorMessages)) {
+                    $message .= '. Errors: ' . implode(', ', $errorMessages);
+                }
             }
             
             echo json_encode([
-                'success' => !$hasFailures, 
+                'success' => !empty($successMessages), 
                 'message' => $message,
-                'result' => $result
+                'result' => $result,
+                'has_failures' => $hasFailures
             ]);
             
         } catch (Exception $e) {
@@ -292,10 +348,10 @@ switch($action) {
                 $deleted[] = 'database';
             }
             
-            // Delete files backup
-            $filesFile = $backupDir . $backupName . '_files.zip';
-            if (file_exists($filesFile)) {
-                unlink($filesFile);
+            // Delete files backup directory
+            $filesDir = $backupDir . $backupName . '_files';
+            if (is_dir($filesDir)) {
+                deleteDirectory($filesDir);
                 $deleted[] = 'files';
             }
             
@@ -323,19 +379,35 @@ switch($action) {
         }
         
         $backupDir = '../backups/';
-        $extension = ($backupType === 'files') ? '.zip' : '.sql';
-        $filename = $backupName . '_' . $backupType . $extension;
-        $filepath = $backupDir . $filename;
         
-        if (file_exists($filepath)) {
-            header('Content-Type: application/octet-stream');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Content-Length: ' . filesize($filepath));
-            readfile($filepath);
-            exit;
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Backup file not found']);
+        if ($backupType === 'database') {
+            $filename = $backupName . '_database.sql';
+            $filepath = $backupDir . $filename;
+            
+            if (file_exists($filepath)) {
+                header('Content-Type: application/sql');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Content-Length: ' . filesize($filepath));
+                readfile($filepath);
+                exit;
+            }
+        } elseif ($backupType === 'files') {
+            $filesDir = $backupDir . $backupName . '_files';
+            if (is_dir($filesDir)) {
+                // Create a temporary zip for download
+                $tempZip = $backupDir . $backupName . '_files_temp.zip';
+                if (createZipFromDirectory($filesDir, $tempZip)) {
+                    header('Content-Type: application/zip');
+                    header('Content-Disposition: attachment; filename="' . $backupName . '_files.zip"');
+                    header('Content-Length: ' . filesize($tempZip));
+                    readfile($tempZip);
+                    unlink($tempZip); // Clean up temp file
+                    exit;
+                }
+            }
         }
+        
+        echo json_encode(['success' => false, 'message' => 'Backup file not found']);
         break;
         
     default:
@@ -345,7 +417,6 @@ switch($action) {
 // Helper functions
 function createDatabaseBackup($db, $backupFile) {
     try {
-        // Set longer execution time for large databases
         set_time_limit(300); // 5 minutes
         
         $tables = [];
@@ -359,20 +430,27 @@ function createDatabaseBackup($db, $backupFile) {
         }
         
         $sql = "-- E-Barangay Portal Database Backup\n";
-        $sql .= "-- Generated on: " . date('Y-m-d H:i:s') . "\n\n";
-        $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+        $sql .= "-- Generated on: " . date('Y-m-d H:i:s') . "\n";
+        $sql .= "-- Tables: " . implode(', ', $tables) . "\n\n";
+        $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n";
+        $sql .= "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n";
+        $sql .= "SET AUTOCOMMIT = 0;\n";
+        $sql .= "START TRANSACTION;\n\n";
         
         foreach ($tables as $table) {
             try {
                 // Get table structure
                 $result = $db->query("SHOW CREATE TABLE `$table`");
                 $row = $result->fetch(PDO::FETCH_ASSOC);
+                $sql .= "-- Table structure for table `$table`\n";
                 $sql .= "DROP TABLE IF EXISTS `$table`;\n";
                 $sql .= $row['Create Table'] . ";\n\n";
                 
                 // Get table data
                 $result = $db->query("SELECT * FROM `$table`");
                 if ($result->rowCount() > 0) {
+                    $sql .= "-- Dumping data for table `$table`\n";
+                    $sql .= "LOCK TABLES `$table` WRITE;\n";
                     $sql .= "INSERT INTO `$table` VALUES\n";
                     $rows = [];
                     while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
@@ -381,15 +459,18 @@ function createDatabaseBackup($db, $backupFile) {
                         }, array_values($row));
                         $rows[] = '(' . implode(', ', $values) . ')';
                     }
-                    $sql .= implode(",\n", $rows) . ";\n\n";
+                    $sql .= implode(",\n", $rows) . ";\n";
+                    $sql .= "UNLOCK TABLES;\n\n";
                 }
             } catch (Exception $e) {
                 error_log("Error backing up table $table: " . $e->getMessage());
-                // Continue with other tables
+                $sql .= "-- Error backing up table $table: " . $e->getMessage() . "\n\n";
             }
         }
         
+        $sql .= "COMMIT;\n";
         $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+        $sql .= "-- Backup completed on: " . date('Y-m-d H:i:s') . "\n";
         
         $bytesWritten = file_put_contents($backupFile, $sql);
         
@@ -399,7 +480,7 @@ function createDatabaseBackup($db, $backupFile) {
         
         return [
             'success' => true, 
-            'message' => 'Database backup created',
+            'message' => 'Database backup created successfully',
             'file' => basename($backupFile),
             'size' => filesize($backupFile),
             'tables_count' => count($tables)
@@ -411,59 +492,65 @@ function createDatabaseBackup($db, $backupFile) {
     }
 }
 
-function createFilesBackup($backupFile) {
+function createFilesBackupAlternative($backupDir) {
     try {
-        // Set longer execution time for large file operations
         set_time_limit(600); // 10 minutes
         
-        if (!class_exists('ZipArchive')) {
-            throw new Exception('ZipArchive class not available');
-        }
-        
-        $zip = new ZipArchive();
-        $result = $zip->open($backupFile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-        if ($result !== TRUE) {
-            throw new Exception('Cannot create zip file');
+        if (!mkdir($backupDir, 0755, true)) {
+            throw new Exception('Cannot create backup directory');
         }
         
         $fileCount = 0;
+        $totalSize = 0;
         
-        // Add uploads directory
+        // Copy uploads directory
         $uploadsDir = '../uploads/';
         if (is_dir($uploadsDir)) {
-            $fileCount += addDirectoryToZip($zip, $uploadsDir, 'uploads/');
+            $targetDir = $backupDir . '/uploads';
+            $result = copyDirectory($uploadsDir, $targetDir);
+            $fileCount += $result['files'];
+            $totalSize += $result['size'];
         }
         
-        // Add assets directory
+        // Copy assets directory
         $assetsDir = '../assets/';
         if (is_dir($assetsDir)) {
-            $fileCount += addDirectoryToZip($zip, $assetsDir, 'assets/');
+            $targetDir = $backupDir . '/assets';
+            $result = copyDirectory($assetsDir, $targetDir);
+            $fileCount += $result['files'];
+            $totalSize += $result['size'];
         }
         
-        // Add config files (excluding sensitive data)
+        // Copy config files (excluding sensitive data)
+        $configDir = $backupDir . '/config';
+        if (!is_dir($configDir)) {
+            mkdir($configDir, 0755, true);
+        }
+        
         $configFiles = ['../config/database.php'];
         foreach ($configFiles as $file) {
             if (file_exists($file)) {
-                $zip->addFile($file, 'config/' . basename($file));
-                $fileCount++;
+                $targetFile = $configDir . '/' . basename($file);
+                if (copy($file, $targetFile)) {
+                    $fileCount++;
+                    $totalSize += filesize($file);
+                }
             }
         }
         
-        $closeResult = $zip->close();
-        
-        if (!$closeResult) {
-            throw new Exception('Failed to close zip file');
-        }
-        
-        if (!file_exists($backupFile)) {
-            throw new Exception('Backup file was not created');
-        }
+        // Create backup info file
+        $infoFile = $backupDir . '/backup_info.txt';
+        $info = "E-Barangay Portal Files Backup\n";
+        $info .= "Created: " . date('Y-m-d H:i:s') . "\n";
+        $info .= "Files: $fileCount\n";
+        $info .= "Size: " . formatBytes($totalSize) . "\n";
+        file_put_contents($infoFile, $info);
         
         return [
             'success' => true, 
-            'message' => 'Files backup created',
-            'file' => basename($backupFile),
-            'size' => filesize($backupFile),
+            'message' => 'Files backup created successfully',
+            'directory' => basename($backupDir),
+            'size' => $totalSize,
             'files_count' => $fileCount
         ];
         
@@ -473,33 +560,39 @@ function createFilesBackup($backupFile) {
     }
 }
 
-function addDirectoryToZip($zip, $dir, $zipPath) {
+function copyDirectory($source, $destination) {
     $fileCount = 0;
+    $totalSize = 0;
     
-    try {
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::LEAVES_ONLY
-        );
-        
-        foreach ($files as $file) {
-            if (!$file->isDir()) {
-                $filePath = $file->getRealPath();
-                $relativePath = $zipPath . substr($filePath, strlen(realpath($dir)) + 1);
-                $zip->addFile($filePath, str_replace('\\', '/', $relativePath));
-                $fileCount++;
-            }
-        }
-    } catch (Exception $e) {
-        error_log("Error adding directory to zip: " . $e->getMessage());
+    if (!is_dir($destination)) {
+        mkdir($destination, 0755, true);
     }
     
-    return $fileCount;
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+    
+    foreach ($iterator as $item) {
+        $target = $destination . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+        
+        if ($item->isDir()) {
+            if (!is_dir($target)) {
+                mkdir($target, 0755, true);
+            }
+        } else {
+            if (copy($item, $target)) {
+                $fileCount++;
+                $totalSize += $item->getSize();
+            }
+        }
+    }
+    
+    return ['files' => $fileCount, 'size' => $totalSize];
 }
 
 function restoreDatabaseBackup($db, $backupFile) {
     try {
-        // Set longer execution time
         set_time_limit(300); // 5 minutes
         
         if (!file_exists($backupFile)) {
@@ -518,24 +611,38 @@ function restoreDatabaseBackup($db, $backupFile) {
         $db->beginTransaction();
         
         $executedStatements = 0;
+        $errors = [];
         
         foreach ($statements as $statement) {
-            if (!empty($statement) && !preg_match('/^--/', $statement) && !preg_match('/^\/\*/', $statement)) {
+            if (!empty($statement) && 
+                !preg_match('/^--/', $statement) && 
+                !preg_match('/^\/\*/', $statement) &&
+                !preg_match('/^SET/', $statement) &&
+                !preg_match('/^START TRANSACTION/', $statement) &&
+                !preg_match('/^COMMIT/', $statement)) {
+                
                 try {
                     $db->exec($statement);
                     $executedStatements++;
                 } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
                     error_log("Error executing SQL statement: " . $e->getMessage());
-                    // Continue with other statements for non-critical errors
                 }
             }
         }
         
         $db->commit();
         
+        $message = "Database restored successfully ($executedStatements statements executed)";
+        if (!empty($errors)) {
+            $message .= ". Some errors occurred but restore completed.";
+        }
+        
         return [
             'success' => true, 
-            'message' => "Database restored successfully ($executedStatements statements executed)"
+            'message' => $message,
+            'statements_executed' => $executedStatements,
+            'errors_count' => count($errors)
         ];
         
     } catch (Exception $e) {
@@ -547,45 +654,109 @@ function restoreDatabaseBackup($db, $backupFile) {
     }
 }
 
-function restoreFilesBackup($backupFile) {
+function restoreFilesBackupAlternative($backupDir) {
     try {
-        // Set longer execution time
         set_time_limit(600); // 10 minutes
         
-        if (!file_exists($backupFile)) {
-            throw new Exception('Backup file does not exist');
+        if (!is_dir($backupDir)) {
+            throw new Exception('Backup directory does not exist');
         }
         
-        if (!class_exists('ZipArchive')) {
-            throw new Exception('ZipArchive class not available');
+        $restoredFiles = 0;
+        
+        // Restore uploads directory
+        $uploadsBackup = $backupDir . '/uploads';
+        if (is_dir($uploadsBackup)) {
+            $targetDir = '../uploads/';
+            $result = copyDirectory($uploadsBackup, $targetDir);
+            $restoredFiles += $result['files'];
         }
         
-        $zip = new ZipArchive();
-        $result = $zip->open($backupFile);
-        if ($result !== TRUE) {
-            throw new Exception('Cannot open backup file');
+        // Restore assets directory
+        $assetsBackup = $backupDir . '/assets';
+        if (is_dir($assetsBackup)) {
+            $targetDir = '../assets/';
+            $result = copyDirectory($assetsBackup, $targetDir);
+            $restoredFiles += $result['files'];
         }
         
-        // Extract to parent directory
-        $extractPath = '../';
-        $extractResult = $zip->extractTo($extractPath);
-        
-        if (!$extractResult) {
-            throw new Exception('Failed to extract files');
+        // Restore config files
+        $configBackup = $backupDir . '/config';
+        if (is_dir($configBackup)) {
+            $targetDir = '../config/';
+            $result = copyDirectory($configBackup, $targetDir);
+            $restoredFiles += $result['files'];
         }
-        
-        $numFiles = $zip->numFiles;
-        $zip->close();
         
         return [
             'success' => true, 
-            'message' => "Files restored successfully ($numFiles files extracted)"
+            'message' => "Files restored successfully ($restoredFiles files)",
+            'files_restored' => $restoredFiles
         ];
         
     } catch (Exception $e) {
         error_log("Files restore error: " . $e->getMessage());
         return ['success' => false, 'message' => 'Files restore failed: ' . $e->getMessage()];
     }
+}
+
+function deleteDirectory($dir) {
+    if (!is_dir($dir)) {
+        return false;
+    }
+    
+    $files = array_diff(scandir($dir), array('.', '..'));
+    
+    foreach ($files as $file) {
+        $path = $dir . DIRECTORY_SEPARATOR . $file;
+        if (is_dir($path)) {
+            deleteDirectory($path);
+        } else {
+            unlink($path);
+        }
+    }
+    
+    return rmdir($dir);
+}
+
+function getDirSize($dir) {
+    $size = 0;
+    
+    if (!is_dir($dir)) {
+        return 0;
+    }
+    
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)) as $file) {
+        $size += $file->getSize();
+    }
+    
+    return $size;
+}
+
+function createZipFromDirectory($sourceDir, $zipFile) {
+    if (!class_exists('ZipArchive')) {
+        return false;
+    }
+    
+    $zip = new ZipArchive();
+    if ($zip->open($zipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+        return false;
+    }
+    
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+    
+    foreach ($iterator as $file) {
+        if (!$file->isDir()) {
+            $filePath = $file->getRealPath();
+            $relativePath = substr($filePath, strlen(realpath($sourceDir)) + 1);
+            $zip->addFile($filePath, str_replace('\\', '/', $relativePath));
+        }
+    }
+    
+    return $zip->close();
 }
 
 function formatBytes($size, $precision = 2) {
@@ -615,7 +786,6 @@ function logBackupActivity($adminId, $action, $type, $backupName) {
         $stmt->execute();
         
     } catch (Exception $e) {
-        // Log error but don't fail the main operation
         error_log("Failed to log backup activity: " . $e->getMessage());
     }
 }
