@@ -1658,10 +1658,20 @@ if (window.location.search.includes('debug=1')) {
 }
 
 // Demo account function for residents
-function fillDemoAccount(email, password) {
+async function fillDemoAccount(email, password) {
     const emailField = document.getElementById('email') || document.getElementById('loginEmail');
     const passwordField = document.getElementById('password') || document.getElementById('loginPassword');
     
     if (emailField) emailField.value = email;
     if (passwordField) passwordField.value = password;
+    
+    // Automatically submit the login form
+    const loginForm = document.getElementById('signInForm');
+    if (loginForm) {
+        // Trigger the login process
+        await handleSignIn({ 
+            preventDefault: () => {},
+            target: loginForm
+        });
+    }
 }

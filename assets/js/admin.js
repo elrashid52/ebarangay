@@ -2655,10 +2655,20 @@ function showAdminMessage(message, type) {
 }
 
 // Demo account function for admin
-function fillAdminDemoAccount() {
+async function fillAdminDemoAccount() {
     const emailField = document.getElementById('adminEmail');
     const passwordField = document.getElementById('adminPassword');
     
     if (emailField) emailField.value = 'admin@barangay.gov.ph';
-    if (passwordField) passwordField.value = 'admin123';
+    if (passwordField) passwordField.value = 'password';
+    
+    // Automatically submit the admin login form
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    if (adminLoginForm) {
+        // Trigger the admin login process
+        await handleAdminLogin({ 
+            preventDefault: () => {},
+            target: adminLoginForm
+        });
+    }
 }
