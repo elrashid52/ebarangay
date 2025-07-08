@@ -723,6 +723,8 @@ body {
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        margin: 0;
+        padding: 0;
     }
     
     body * {
@@ -739,12 +741,12 @@ body {
         left: 0;
         top: 0;
         width: 100%;
-        min-height: 100vh;
-        padding: 15px;
+        padding: 20px;
         font-size: 11px;
         margin: 0;
         box-sizing: border-box;
         overflow: visible;
+        background: white;
     }
     
     .report-header {
@@ -753,6 +755,7 @@ body {
         border-bottom: 2px solid #333;
         padding-bottom: 15px;
         page-break-inside: avoid;
+        page-break-after: avoid;
     }
     
     .report-title {
@@ -776,6 +779,7 @@ body {
     .report-stats {
         margin-bottom: 20px;
         page-break-inside: avoid;
+        clear: both;
     }
     
     .report-stats h3 {
@@ -784,6 +788,23 @@ body {
         padding-bottom: 8px;
         margin-bottom: 15px;
         font-size: 13px;
+        page-break-after: avoid;
+    }
+    
+    .report-activities {
+        margin-bottom: 20px;
+        page-break-inside: avoid;
+        clear: both;
+    }
+    
+    .report-activities h3 {
+        color: #1e40af !important;
+        border-bottom: 2px solid #1e40af !important;
+        padding-bottom: 8px;
+        margin-bottom: 15px;
+        font-size: 13px;
+        page-break-after: avoid;
+        margin-top: 20px;
     }
     
     .report-table {
@@ -792,6 +813,8 @@ body {
         margin-top: 15px;
         margin-bottom: 15px;
         font-size: 9px;
+        page-break-inside: auto;
+        clear: both;
     }
     
     .report-table th,
@@ -804,6 +827,7 @@ body {
         max-width: 100px;
         overflow: hidden;
         text-overflow: ellipsis;
+        page-break-inside: avoid;
     }
     
     .report-table th {
@@ -818,22 +842,10 @@ body {
         vertical-align: top;
     }
     
-    .report-activities {
-        margin-bottom: 20px;
-    }
-    
-    .report-activities h3 {
-        color: #1e40af !important;
-        border-bottom: 2px solid #1e40af !important;
-        padding-bottom: 8px;
-        margin-bottom: 15px;
-        font-size: 13px;
-        page-break-after: avoid;
-    }
-    
     .report-security {
         margin-bottom: 20px;
         page-break-inside: avoid;
+        clear: both;
     }
     
     .report-security h3 {
@@ -842,31 +854,31 @@ body {
         padding-bottom: 8px;
         margin-bottom: 15px;
         font-size: 13px;
+        page-break-after: avoid;
     }
     
     .report-footer {
-        position: relative;
-        bottom: 20px;
-        left: 20px;
-        right: 20px;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
         text-align: center;
         font-size: 9px;
         color: #666;
         border-top: 1px solid #ddd;
         padding-top: 10px;
-        margin-top: 30px;
+        padding-bottom: 10px;
         page-break-inside: avoid;
+        background: white;
+        z-index: 1000;
     }
     
     .report-page-break {
         page-break-before: always;
+        clear: both;
     }
     
     /* Ensure tables don't break awkwardly */
-    .report-table {
-        page-break-inside: auto;
-    }
-    
     .report-table tr {
         page-break-inside: avoid;
         page-break-after: auto;
@@ -874,10 +886,15 @@ body {
     
     .report-table thead {
         display: table-header-group;
+        page-break-after: avoid;
     }
     
     .report-table tfoot {
         display: table-footer-group;
+    }
+    
+    .report-table tbody {
+        page-break-inside: auto;
     }
     
     /* Specific column widths for better layout */
@@ -959,6 +976,42 @@ body {
         white-space: normal;
         word-wrap: break-word;
         max-width: 150px;
+    }
+    
+    /* Force proper page structure */
+    @page {
+        margin: 0.5in;
+        size: A4;
+    }
+    
+    /* Prevent orphaned headers */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        page-break-inside: avoid;
+    }
+    
+    /* Ensure content doesn't overlap */
+    .report-header + * {
+        margin-top: 20px;
+    }
+    
+    /* Better spacing for multi-page reports */
+    .report-stats,
+    .report-activities,
+    .report-security {
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+    
+    /* Ensure table headers repeat on new pages */
+    .report-table thead tr {
+        page-break-inside: avoid;
+        page-break-after: avoid;
+    }
+    
+    /* Add some breathing room at the bottom for footer */
+    .activity-report-content {
+        padding-bottom: 60px;
     }
 }
 
