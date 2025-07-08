@@ -724,6 +724,9 @@ async function reviewAdminRequest(requestId) {
 function showAdminRequestReviewModal(request) {
     const modal = document.getElementById('adminRequestReviewModal');
     
+    // Store request ID in modal for document viewing
+    modal.dataset.requestId = request.id;
+    
     // Update modal title
     document.getElementById('adminRequestReviewTitle').textContent = 
         `📄 Certificate Request Review - ${request.type}`;
@@ -819,11 +822,40 @@ function handleCertificateUpload(input) {
 
 // Document Viewer
 function viewDocument(documentType) {
-    if (!currentRequestReview) return;
+    // Get the current request ID from the modal
+    const modal = document.getElementById('adminRequestReviewModal');
+    const requestId = modal ? modal.dataset.requestId : null;
     
-    // Open document in new window
-    const url = `api/admin-requests.php?action=view_document&request_id=${currentRequestReview.id}&document_type=${documentType}`;
-    window.open(url, '_blank', 'width=800,height=600');
+    if (!requestId) {
+        console.error('Request ID not found');
+        showAdminMessage('Request ID not found', 'error');
+        return;
+    }
+    
+    // Map document types to the actual field names used in the form
+    const documentTypeMap = {
+        'valid_id': 'document_valid_government_issued_id_with_address',
+        'cedula': 'document_cedula',
+        'proof_billing': 'document_proof_of_billing_proof_of_residency_if_not_on_id'
+    };
+    
+    const actualDocumentType = documentTypeMap[documentType] || documentType;
+    
+    console.log('Viewing document:', {
+        requestId: requestId,
+        documentType: documentType,
+        actualDocumentType: actualDocumentType
+    });
+    
+    const url = `api/admin-requests.php?action=view_document&request_id=${requestId}&document_type=${actualDocumentType}`;
+    
+    // Open in new tab
+    const newWindow = window.open(url, '_blank');
+    
+    // Check if popup was blocked
+    if (!newWindow) {
+        showAdminMessage('Popup blocked. Please allow popups for this site.', 'error');
+    }
 }
 
 // Approve and Upload Request

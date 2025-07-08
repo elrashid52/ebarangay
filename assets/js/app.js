@@ -823,6 +823,12 @@ async function handleCertificateRequest(e) {
         formData.append('payment_receipt', paymentReceipt.files[0]);
     }
     
+    // Debug: Log what we're sending
+    console.log('Submitting certificate request with documents:', Object.keys(uploadedDocuments));
+    for (let pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+    }
+    
     // Disable submit button to prevent double submission
     const submitBtn = document.getElementById('submitRequestBtn');
     const originalText = submitBtn.textContent;
