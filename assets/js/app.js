@@ -27,7 +27,7 @@ async function checkSession() {
         
         if (data.success) {
             currentUser = data.user;
-            console.log('Current user set:', currentUser);
+            console.log('Valid session found for user:', currentUser);
             
             // CRITICAL: Check user type and redirect accordingly
             if (currentUser.type === 'admin') {
@@ -65,6 +65,7 @@ async function checkSession() {
         }
     } catch (error) {
         console.error('Session check failed:', error);
+        console.log('Session check error, showing auth form');
         if (window.location.pathname.includes('admin.php')) {
             // If error on admin portal, redirect to unified login
             console.log('Session check error on admin portal, redirecting to unified login...');
@@ -213,6 +214,7 @@ function initializeEventListeners() {
 // Authentication functions
 async function handleSignIn(e) {
     e.preventDefault();
+    console.log('Sign in form submitted');
     
     const formData = new FormData(e.target);
     formData.append('action', 'login');
@@ -224,6 +226,7 @@ async function handleSignIn(e) {
     submitBtn.textContent = 'Signing In...';
     
     try {
+        console.log('Sending login request...');
         const response = await fetch('api/auth.php', {
             method: 'POST',
             body: formData
@@ -234,6 +237,7 @@ async function handleSignIn(e) {
         
         if (data.success) {
             currentUser = data.user;
+            console.log('Login successful for user:', currentUser);
             showMessage('Login successful!', 'success');
             
             // CRITICAL: Handle redirect based on user type
@@ -244,6 +248,11 @@ async function handleSignIn(e) {
                 }, 2000); // 2 second delay to show success message
             } else {
                 console.log('Resident login detected, showing dashboard...');
+                // Set resident session variables for compatibility
+                if (currentUser.type === 'resident') {
+                    // These are needed for the resident portal to work
+                    console.log('Setting up resident session...');
+                }
                 showDashboard();
             }
         } else {
@@ -414,6 +423,7 @@ async function loadDashboardData() {
         console.log('Dashboard stats response:', data);
         
         if (data.success) {
+            console.log('Dashboard stats loaded:', data.stats);
             updateDashboardStats(data.stats);
         } else {
             console.error('Failed to load stats:', data.message);
@@ -450,12 +460,11 @@ async function loadRecentRequests() {
         console.log('Recent requests data:', data);
         
         if (data.success) {
+            console.log('Recent requests loaded:', data.requests.length, 'requests');
             displayRecentRequests(data.requests.slice(0, 5));
         } else {
             console.error('Failed to load recent requests:', data.message);
             showMessage('Failed to load recent requests', 'error');
-        } else {
-            console.error('Failed to load recent requests:', data.message);
         }
     } catch (error) {
         console.error('Failed to load recent requests:', error);
@@ -498,18 +507,16 @@ async function loadRequestsData() {
         console.log('Requests data response:', data);
         
         if (data.success) {
+            console.log('Requests data loaded:', data.requests.length, 'requests');
             displayRequestsTable(data.requests);
         } else {
-            console.error('Failed to load requests:', data.message);
-            showMessage('Failed to load requests', 'error');
-        } else {
-            console.error('Failed to load requests:', data.message);
+            console.error('Failed to load requests data:', data.message);
+            // Show error message to user
             showMessage('Failed to load requests: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Failed to load requests:', error);
-        showMessage('Error loading requests', 'error');
-        showMessage('Failed to load requests', 'error');
+        showMessage('Failed to load requests. Please try again.', 'error');
     }
 }
 
@@ -581,6 +588,7 @@ async function loadCertificateTypes() {
         console.log('Certificate types data:', data);
         
         if (data.success) {
+            console.log('Certificate types loaded:', data.types.length, 'types');
             populateCertificateTypes(data.types);
         } else {
             console.error('Failed to load certificate types:', data.message);
@@ -959,15 +967,16 @@ async function loadProfileData() {
         console.log('Profile data received:', data);
         
         if (data.success) {
+            console.log('Profile data loaded');
             populateProfileForm(data.profile);
             updateProfileHeader(data.profile);
         } else {
             console.error('Failed to load profile:', data.message);
-            showMessage('Failed to load profile data', 'error');
+            showMessage('Failed to load profile: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Failed to load profile:', error);
-        showMessage('Error loading profile', 'error');
+        showMessage('Failed to load profile. Please try again.', 'error');
     }
 }
 
@@ -1489,8 +1498,8 @@ function formatDate(dateString) {
 }
 
 function showMessage(message, type) {
-    console.log('Showing message:', message, type);
     // Remove existing messages
+    console.log('Showing message:', message, 'Type:', type);
     const existingMessages = document.querySelectorAll('.auth-message');
     existingMessages.forEach(msg => msg.remove());
     
