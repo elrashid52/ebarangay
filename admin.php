@@ -183,9 +183,60 @@
                 <div class="admin-page-header">
                     <h1 class="admin-page-title">Manage Residents</h1>
                     <p class="admin-page-subtitle">View and manage resident information</p>
-                    <button class="admin-btn admin-btn-primary" onclick="openAddResidentModal()">
-                        ➕ Add Resident
-                    </button>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <button class="admin-btn admin-btn-primary" onclick="openAddResidentModal()">
+                            ➕ Add Resident
+                        </button>
+                        <button class="admin-btn admin-btn-secondary" onclick="exportResidents('csv')">
+                            📊 Export CSV
+                        </button>
+                        <button class="admin-btn admin-btn-secondary" onclick="showResidentStatistics()">
+                            📈 Statistics
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Resident Statistics Cards -->
+                <div class="admin-dashboard-grid" id="residentStatsGrid" style="margin-bottom: 30px; display: none;">
+                    <div class="admin-dashboard-card">
+                        <div class="admin-card-header">
+                            <div class="admin-card-icon total-residents">👥</div>
+                            <div class="admin-card-content">
+                                <h3>Total Residents</h3>
+                                <div class="admin-card-number" id="statTotalResidents">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-dashboard-card">
+                        <div class="admin-card-header">
+                            <div class="admin-card-icon approved-today">✅</div>
+                            <div class="admin-card-content">
+                                <h3>Active Residents</h3>
+                                <div class="admin-card-number" id="statActiveResidents">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-dashboard-card">
+                        <div class="admin-card-header">
+                            <div class="admin-card-icon pending-requests">📅</div>
+                            <div class="admin-card-content">
+                                <h3>New This Month</h3>
+                                <div class="admin-card-number" id="statNewThisMonth">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-dashboard-card">
+                        <div class="admin-card-header">
+                            <div class="admin-card-icon open-blotters">🗳️</div>
+                            <div class="admin-card-content">
+                                <h3>Registered Voters</h3>
+                                <div class="admin-card-number" id="statVoters">0</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="admin-data-grid">
@@ -194,12 +245,45 @@
                             <input type="text" id="residentsSearch" placeholder="Search residents..." class="admin-search-input">
                         </div>
                         <div class="admin-filter-controls">
+                            <select id="residentsRoleFilter" class="admin-filter-select">
+                                <option value="">All Roles</option>
+                                <option value="Resident">Resident</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Barangay Official">Barangay Official</option>
+                            </select>
                             <select id="residentsStatusFilter" class="admin-filter-select">
                                 <option value="">All Status</option>
                                 <option value="Active">Active</option>
                                 <option value="Pending Approval">Pending Approval</option>
                                 <option value="Deactivated">Deactivated</option>
                             </select>
+                            <button class="admin-btn admin-btn-secondary" onclick="filterResidents()">
+                                🔍 Filter
+                            </button>
+                            <button class="admin-btn admin-btn-secondary" onclick="clearResidentFilters()">
+                                🔄 Clear
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Bulk Actions -->
+                    <div class="admin-bulk-actions" id="residentBulkActions" style="display: none;">
+                        <div class="bulk-actions-header">
+                            <span id="selectedResidentsCount">0 residents selected</span>
+                            <div class="bulk-actions-buttons">
+                                <button class="admin-btn admin-btn-secondary" onclick="bulkActivateResidents()">
+                                    ✅ Activate
+                                </button>
+                                <button class="admin-btn admin-btn-secondary" onclick="bulkDeactivateResidents()">
+                                    ❌ Deactivate
+                                </button>
+                                <button class="admin-btn admin-btn-danger" onclick="bulkDeleteResidents()">
+                                    🗑️ Delete
+                                </button>
+                                <button class="admin-btn admin-btn-secondary" onclick="clearResidentSelection()">
+                                    Clear Selection
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -207,9 +291,13 @@
                         <table class="admin-data-table">
                             <thead>
                                 <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAllResidents" onchange="toggleAllResidents(this)">
+                                    </th>
                                     <th>NAME</th>
                                     <th>CONTACT INFO</th>
                                     <th>ADDRESS</th>
+                                    <th>ROLE</th>
                                     <th>STATUS</th>
                                     <th>REGISTERED</th>
                                     <th>ACTIONS</th>
@@ -217,10 +305,21 @@
                             </thead>
                             <tbody id="adminResidentsTableBody">
                                 <tr>
-                                    <td colspan="6" style="text-align: center; color: #64748b;">Loading residents...</td>
+                                    <td colspan="8" style="text-align: center; color: #64748b;">Loading residents...</td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="admin-pagination" id="residentsPagination" style="display: none;">
+                        <button class="admin-btn admin-btn-secondary" onclick="loadResidentsPage(currentResidentsPage - 1)" id="prevResidentsBtn">
+                            ← Previous
+                        </button>
+                        <span id="residentsPageInfo">Page 1 of 1</span>
+                        <button class="admin-btn admin-btn-secondary" onclick="loadResidentsPage(currentResidentsPage + 1)" id="nextResidentsBtn">
+                            Next →
+                        </button>
                     </div>
                 </div>
             </div>
@@ -824,6 +923,361 @@
                 <button class="admin-modal-close" onclick="closeAddResidentModal()">✕</button>
             </div>
             <form id="addResidentForm" class="admin-form">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h3 class="section-title">👤 Basic Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="newResidentFirstName">First Name *</label>
+                            <input type="text" id="newResidentFirstName" name="first_name" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentLastName">Last Name *</label>
+                            <input type="text" id="newResidentLastName" name="last_name" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentMiddleName">Middle Name</label>
+                            <input type="text" id="newResidentMiddleName" name="middle_name">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentSex">Sex</label>
+                            <select id="newResidentSex" name="sex">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentBirthDate">Birth Date</label>
+                            <input type="date" id="newResidentBirthDate" name="birth_date">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentCivilStatus">Civil Status</label>
+                            <select id="newResidentCivilStatus" name="civil_status">
+                                <option value="Single">Single</option>
+                                <option value="Married">Married</option>
+                                <option value="Widowed">Widowed</option>
+                                <option value="Separated">Separated</option>
+                                <option value="Divorced">Divorced</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contact Information -->
+                <div class="form-section">
+                    <h3 class="section-title">📞 Contact Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="newResidentEmail">Email *</label>
+                            <input type="email" id="newResidentEmail" name="email" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentMobile">Mobile Number *</label>
+                            <input type="tel" id="newResidentMobile" name="mobile_number" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentPassword">Password</label>
+                            <input type="password" id="newResidentPassword" name="password" value="resident123">
+                            <small>Default: resident123</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Address Information -->
+                <div class="form-section">
+                    <h3 class="section-title">🏠 Address Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="newResidentHouseNo">House No.</label>
+                            <input type="text" id="newResidentHouseNo" name="house_no">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentStreet">Street</label>
+                            <input type="text" id="newResidentStreet" name="street">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentPurok">Purok</label>
+                            <input type="text" id="newResidentPurok" name="purok">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentBarangay">Barangay</label>
+                            <input type="text" id="newResidentBarangay" name="barangay" value="Sample Barangay">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentCity">City</label>
+                            <input type="text" id="newResidentCity" name="city">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentProvince">Province</label>
+                            <input type="text" id="newResidentProvince" name="province">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- System Information -->
+                <div class="form-section">
+                    <h3 class="section-title">⚙️ System Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="newResidentRole">Role</label>
+                            <select id="newResidentRole" name="role">
+                                <option value="Resident">Resident</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Barangay Official">Barangay Official</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentStatus">Status</label>
+                            <select id="newResidentStatus" name="status">
+                                <option value="Active">Active</option>
+                                <option value="Pending Approval">Pending Approval</option>
+                                <option value="Deactivated">Deactivated</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentVoterStatus">Voter Status</label>
+                            <select id="newResidentVoterStatus" name="voter_status">
+                                <option value="Not Registered">Not Registered</option>
+                                <option value="Registered">Registered</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="newResidentEmploymentStatus">Employment Status</label>
+                            <select id="newResidentEmploymentStatus" name="employment_status">
+                                <option value="Unemployed">Unemployed</option>
+                                <option value="Employed">Employed</option>
+                                <option value="Self-employed">Self-employed</option>
+                                <option value="Student">Student</option>
+                                <option value="Retired">Retired</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-modal-actions">
+                    <button type="button" class="admin-btn admin-btn-secondary" onclick="closeAddResidentModal()">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary">Add Resident</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Resident Modal -->
+    <div id="editResidentModal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2>Edit Resident</h2>
+                <button class="admin-modal-close" onclick="closeEditResidentModal()">✕</button>
+            </div>
+            <form id="editResidentForm" class="admin-form">
+                <input type="hidden" id="editResidentId" name="id">
+                
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h3 class="section-title">👤 Basic Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="editResidentFirstName">First Name *</label>
+                            <input type="text" id="editResidentFirstName" name="first_name" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentLastName">Last Name *</label>
+                            <input type="text" id="editResidentLastName" name="last_name" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentMiddleName">Middle Name</label>
+                            <input type="text" id="editResidentMiddleName" name="middle_name">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentSex">Sex</label>
+                            <select id="editResidentSex" name="sex">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentBirthDate">Birth Date</label>
+                            <input type="date" id="editResidentBirthDate" name="birth_date">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentCivilStatus">Civil Status</label>
+                            <select id="editResidentCivilStatus" name="civil_status">
+                                <option value="Single">Single</option>
+                                <option value="Married">Married</option>
+                                <option value="Widowed">Widowed</option>
+                                <option value="Separated">Separated</option>
+                                <option value="Divorced">Divorced</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contact Information -->
+                <div class="form-section">
+                    <h3 class="section-title">📞 Contact Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="editResidentEmail">Email *</label>
+                            <input type="email" id="editResidentEmail" name="email" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentMobile">Mobile Number *</label>
+                            <input type="tel" id="editResidentMobile" name="mobile_number" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Address Information -->
+                <div class="form-section">
+                    <h3 class="section-title">🏠 Address Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="editResidentHouseNo">House No.</label>
+                            <input type="text" id="editResidentHouseNo" name="house_no">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentStreet">Street</label>
+                            <input type="text" id="editResidentStreet" name="street">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentPurok">Purok</label>
+                            <input type="text" id="editResidentPurok" name="purok">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentBarangay">Barangay</label>
+                            <input type="text" id="editResidentBarangay" name="barangay">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentCity">City</label>
+                            <input type="text" id="editResidentCity" name="city">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentProvince">Province</label>
+                            <input type="text" id="editResidentProvince" name="province">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- System Information -->
+                <div class="form-section">
+                    <h3 class="section-title">⚙️ System Information</h3>
+                    <div class="admin-form-grid">
+                        <div class="admin-form-group">
+                            <label for="editResidentRole">Role</label>
+                            <select id="editResidentRole" name="role">
+                                <option value="Resident">Resident</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Barangay Official">Barangay Official</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentStatus">Status</label>
+                            <select id="editResidentStatus" name="status">
+                                <option value="Active">Active</option>
+                                <option value="Pending Approval">Pending Approval</option>
+                                <option value="Deactivated">Deactivated</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentVoterStatus">Voter Status</label>
+                            <select id="editResidentVoterStatus" name="voter_status">
+                                <option value="Not Registered">Not Registered</option>
+                                <option value="Registered">Registered</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="editResidentEmploymentStatus">Employment Status</label>
+                            <select id="editResidentEmploymentStatus" name="employment_status">
+                                <option value="Unemployed">Unemployed</option>
+                                <option value="Employed">Employed</option>
+                                <option value="Self-employed">Self-employed</option>
+                                <option value="Student">Student</option>
+                                <option value="Retired">Retired</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-modal-actions">
+                    <button type="button" class="admin-btn admin-btn-secondary" onclick="closeEditResidentModal()">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary">Update Resident</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resident Details Modal -->
+    <div id="residentDetailsModal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2 id="residentDetailsTitle">👤 Resident Details</h2>
+                <button class="admin-modal-close" onclick="closeResidentDetailsModal()">✕</button>
+            </div>
+            <div id="residentDetailsContent" class="resident-details-content">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="admin-modal-actions">
+                <button class="admin-btn admin-btn-primary" onclick="editResidentFromDetails()">
+                    ✏️ Edit Resident
+                </button>
+                <button class="admin-btn admin-btn-secondary" onclick="resetResidentPassword()">
+                    🔑 Reset Password
+                </button>
+                <button class="admin-btn admin-btn-secondary" onclick="closeResidentDetailsModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2>🔑 Reset Password</h2>
+                <button class="admin-modal-close" onclick="closeResetPasswordModal()">✕</button>
+            </div>
+            <form id="resetPasswordForm" class="admin-form">
+                <input type="hidden" id="resetPasswordResidentId">
+                <div class="admin-form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" name="new_password" value="resident123" required>
+                    <small>Default password is 'resident123'</small>
+                </div>
+                <div class="admin-modal-actions">
+                    <button type="button" class="admin-btn admin-btn-secondary" onclick="closeResetPasswordModal()">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resident Statistics Modal -->
+    <div id="residentStatisticsModal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2>📈 Resident Statistics</h2>
+                <button class="admin-modal-close" onclick="closeResidentStatisticsModal()">✕</button>
+            </div>
+            <div id="residentStatisticsContent" class="statistics-content">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="admin-modal-actions">
+                <button class="admin-btn admin-btn-secondary" onclick="closeResidentStatisticsModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Old Add Resident Modal (keeping for compatibility) -->
+    <div id="oldAddResidentModal" class="admin-modal" style="display: none;">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2>Add New Resident (Simple)</h2>
+                <button class="admin-modal-close" onclick="closeAddResidentModal()">✕</button>
+            </div>
+            <form id="oldAddResidentForm" class="admin-form">
                 <div class="admin-form-grid">
                     <div class="admin-form-group">
                         <label for="newResidentFirstName">First Name *</label>
