@@ -8,6 +8,7 @@ let uploadedDocuments = {};
 document.addEventListener('DOMContentLoaded', function() {
     checkSession();
     initializeEventListeners();
+    initializeRegistrationForm();
     
     // Log page load activity for residents
     if (window.location.pathname.includes('index.php') || window.location.pathname.endsWith('/')) {
@@ -242,6 +243,125 @@ function initializeEventListeners() {
     if (statusFilter) {
         statusFilter.addEventListener('change', filterRequests);
     }
+}
+
+// Initialize registration form
+function initializeRegistrationForm() {
+    // Auto-calculate age when birth date changes
+    const birthDateInput = document.getElementById('regBirthDate');
+    if (birthDateInput) {
+        birthDateInput.addEventListener('change', function() {
+            const birthDate = new Date(this.value);
+            const today = new Date();
+            const age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            // Show age validation message
+            if (age < 18) {
+                showMessage('You must be at least 18 years old to register', 'error');
+            }
+        });
+    }
+    
+    // Validate mobile number format
+    const mobileInput = document.getElementById('regMobileNumber');
+    if (mobileInput) {
+        mobileInput.addEventListener('input', function() {
+            const value = this.value.replace(/\D/g, ''); // Remove non-digits
+            if (value.length <= 11) {
+                this.value = value;
+            }
+            
+            if (value.length === 11 && !value.startsWith('09')) {
+                showMessage('Mobile number must start with 09', 'error');
+            }
+        });
+    }
+    
+    // Validate emergency contact number
+    const emergencyContactInput = document.getElementById('regEmergencyContactNumber');
+    if (emergencyContactInput) {
+        emergencyContactInput.addEventListener('input', function() {
+            const value = this.value.replace(/\D/g, ''); // Remove non-digits
+            if (value.length <= 11) {
+                this.value = value;
+            }
+        });
+    }
+    
+    // Password confirmation validation
+    const passwordInput = document.getElementById('regPassword');
+    const confirmPasswordInput = document.getElementById('regConfirmPassword');
+    
+    if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('input', function() {
+            if (passwordInput.value !== this.value) {
+                this.setCustomValidity('Passwords do not match');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+}
+
+// Handle registration
+async function handleRegistration(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    formData.append('action', 'register');
+    
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating Account...';
+    
+    try {
+        const response = await fetch('api/auth.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        console.log('Registration response:', data);
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            // Clear form and switch to login
+            e.target.reset();
+            setTimeout(() => {
+                showLoginForm();
+            }, 2000);
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Registration failed:', error);
+        showMessage('Registration failed. Please try again.', 'error');
+    } finally {
+        // Restore button state
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+}
+
+// Show registration form
+function showRegistrationForm() {
+    document.getElementById('authContainer').style.display = 'none';
+    document.getElementById('registrationContainer').style.display = 'flex';
+    document.getElementById('dashboardContainer').style.display = 'none';
+}
+
+// Show login form
+function showLoginForm() {
+    document.getElementById('authContainer').style.display = 'flex';
+    document.getElementById('registrationContainer').style.display = 'none';
+    document.getElementById('dashboardContainer').style.display = 'none';
 }
 
 // Authentication functions
@@ -1827,6 +1947,12 @@ async function fillDemoAccount(email, password) {
     if (loginForm) {
         // Trigger the login process
         await handleSignIn({ 
+    
+    // Registration form
+    const registrationForm = document.getElementById('registrationForm');
+    if (registrationForm) {
+        registrationForm.addEventListener('submit', handleRegistration);
+    }
             preventDefault: () => {},
             target: loginForm
         });

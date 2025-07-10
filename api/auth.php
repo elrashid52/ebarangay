@@ -13,44 +13,168 @@ $action = $_POST['action'] ?? '';
 
 switch($action) {
     case 'register':
-        $email = $_POST['email'] ?? '';
+        // Get all registration data
+        $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
-        $first_name = $_POST['first_name'] ?? '';
-        $last_name = $_POST['last_name'] ?? '';
-        $middle_name = $_POST['middle_name'] ?? '';
-        $phone = $_POST['phone'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+        $first_name = trim($_POST['first_name'] ?? '');
+        $last_name = trim($_POST['last_name'] ?? '');
+        $middle_name = trim($_POST['middle_name'] ?? '');
+        $sex = $_POST['sex'] ?? '';
         $birth_date = $_POST['birth_date'] ?? '';
-        $civil_status = $_POST['civil_status'] ?? 'Single';
+        $civil_status = $_POST['civil_status'] ?? '';
+        $mobile_number = trim($_POST['mobile_number'] ?? '');
+        $landline_number = trim($_POST['landline_number'] ?? '');
+        $house_no = trim($_POST['house_no'] ?? '');
+        $street = trim($_POST['street'] ?? '');
+        $purok = trim($_POST['purok'] ?? '');
+        $barangay = trim($_POST['barangay'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $province = trim($_POST['province'] ?? '');
+        $zip_code = trim($_POST['zip_code'] ?? '');
+        $years_of_residency = intval($_POST['years_of_residency'] ?? 0);
+        $employment_status = $_POST['employment_status'] ?? '';
+        $occupation = trim($_POST['occupation'] ?? '');
+        $place_of_work = trim($_POST['place_of_work'] ?? '');
+        $monthly_income_range = $_POST['monthly_income_range'] ?? '';
+        $emergency_contact_name = trim($_POST['emergency_contact_name'] ?? '');
+        $emergency_contact_relationship = $_POST['emergency_contact_relationship'] ?? '';
+        $emergency_contact_number = trim($_POST['emergency_contact_number'] ?? '');
+        $emergency_contact_address = trim($_POST['emergency_contact_address'] ?? '');
         
-        if(empty($email) || empty($password) || empty($first_name) || empty($last_name) || empty($phone)) {
-            echo json_encode(['success' => false, 'message' => 'Required fields are missing']);
+        // Validate required fields
+        if(empty($email) || empty($password) || empty($first_name) || empty($last_name) || 
+           empty($sex) || empty($birth_date) || empty($civil_status) || empty($mobile_number) ||
+           empty($house_no) || empty($street) || empty($purok) || empty($barangay) ||
+           empty($city) || empty($province) || empty($years_of_residency) || 
+           empty($employment_status) || empty($emergency_contact_name) || 
+           empty($emergency_contact_relationship) || empty($emergency_contact_number)) {
+            echo json_encode(['success' => false, 'message' => 'Please fill in all required fields']);
             exit;
         }
         
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Please enter a valid email address']);
+            exit;
+        }
+        
+        // Validate password
         if(strlen($password) < 6) {
             echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters']);
             exit;
         }
         
-        $resident->email = $email;
-        
-        if($resident->emailExists()) {
-            echo json_encode(['success' => false, 'message' => 'Email already exists']);
+        // Validate password confirmation
+        if($password !== $confirm_password) {
+            echo json_encode(['success' => false, 'message' => 'Passwords do not match']);
             exit;
         }
         
-        $resident->password = $password;
-        $resident->first_name = $first_name;
-        $resident->last_name = $last_name;
-        $resident->middle_name = $middle_name;
-        $resident->mobile_number = $phone;
-        $resident->birth_date = $birth_date;
-        $resident->civil_status = $civil_status;
+        // Validate mobile number format (Philippine format)
+        if(!preg_match('/^09\d{9}$/', $mobile_number)) {
+            echo json_encode(['success' => false, 'message' => 'Please enter a valid mobile number (09XXXXXXXXX)']);
+            exit;
+        }
         
-        if($resident->register()) {
-            echo json_encode(['success' => true, 'message' => 'Registration successful']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Registration failed']);
+        // Validate birth date (must be at least 18 years old)
+        $birthDateTime = new DateTime($birth_date);
+        $today = new DateTime();
+        $age = $today->diff($birthDateTime)->y;
+        
+        if($age < 18) {
+            echo json_encode(['success' => false, 'message' => 'You must be at least 18 years old to register']);
+            exit;
+        }
+        
+        // Check if email already exists
+        try {
+            $checkQuery = "SELECT id FROM residents WHERE email = :email";
+            $checkStmt = $db->prepare($checkQuery);
+            $checkStmt->bindParam(':email', $email);
+            $checkStmt->execute();
+            
+            if($checkStmt->rowCount() > 0) {
+                echo json_encode(['success' => false, 'message' => 'Email address is already registered. Please use a different email.']);
+                exit;
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+            exit;
+        }
+        
+        // Register the resident
+        try {
+            $query = "INSERT INTO residents (
+                        email, password, first_name, last_name, middle_name, sex, birth_date, age, 
+                        civil_status, citizenship, mobile_number, landline_number, house_no, street, 
+                        purok, barangay, city, province, zip_code, years_of_residency, 
+                        employment_status, occupation, place_of_work, monthly_income_range,
+                        emergency_contact_name, emergency_contact_relationship, 
+                        emergency_contact_number, emergency_contact_address, role, status
+                      ) VALUES (
+                        :email, :password, :first_name, :last_name, :middle_name, :sex, :birth_date, :age,
+                        :civil_status, :citizenship, :mobile_number, :landline_number, :house_no, :street,
+                        :purok, :barangay, :city, :province, :zip_code, :years_of_residency,
+                        :employment_status, :occupation, :place_of_work, :monthly_income_range,
+                        :emergency_contact_name, :emergency_contact_relationship,
+                        :emergency_contact_number, :emergency_contact_address, :role, :status
+                      )";
+            
+            $stmt = $db->prepare($query);
+            
+            // Hash password
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            
+            // Bind parameters
+            $stmt->bindParam(':email', $email);
+            $stmt->bindParam(':password', $hashedPassword);
+            $stmt->bindParam(':first_name', $first_name);
+            $stmt->bindParam(':last_name', $last_name);
+            $stmt->bindParam(':middle_name', $middle_name);
+            $stmt->bindParam(':sex', $sex);
+            $stmt->bindParam(':birth_date', $birth_date);
+            $stmt->bindParam(':age', $age);
+            $stmt->bindParam(':civil_status', $civil_status);
+            $stmt->bindValue(':citizenship', 'Filipino');
+            $stmt->bindParam(':mobile_number', $mobile_number);
+            $stmt->bindParam(':landline_number', $landline_number);
+            $stmt->bindParam(':house_no', $house_no);
+            $stmt->bindParam(':street', $street);
+            $stmt->bindParam(':purok', $purok);
+            $stmt->bindParam(':barangay', $barangay);
+            $stmt->bindParam(':city', $city);
+            $stmt->bindParam(':province', $province);
+            $stmt->bindParam(':zip_code', $zip_code);
+            $stmt->bindParam(':years_of_residency', $years_of_residency);
+            $stmt->bindParam(':employment_status', $employment_status);
+            $stmt->bindParam(':occupation', $occupation);
+            $stmt->bindParam(':place_of_work', $place_of_work);
+            $stmt->bindParam(':monthly_income_range', $monthly_income_range);
+            $stmt->bindParam(':emergency_contact_name', $emergency_contact_name);
+            $stmt->bindParam(':emergency_contact_relationship', $emergency_contact_relationship);
+            $stmt->bindParam(':emergency_contact_number', $emergency_contact_number);
+            $stmt->bindParam(':emergency_contact_address', $emergency_contact_address);
+            $stmt->bindValue(':role', 'Resident');
+            $stmt->bindValue(':status', 'Active');
+            
+            if($stmt->execute()) {
+                $newResidentId = $db->lastInsertId();
+                
+                // Log registration activity
+                logUserLoginActivity($newResidentId, 'register', 'New resident account created');
+                
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Account created successfully! You can now log in with your credentials.',
+                    'resident_id' => $newResidentId
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to create account. Please try again.']);
+            }
+        } catch (Exception $e) {
+            error_log("Registration error: " . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'An error occurred during registration. Please try again.']);
         }
         break;
         

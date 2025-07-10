@@ -36,6 +36,10 @@
                 </div>
                 
                 <button type="submit" class="btn btn-primary">Sign In</button>
+                
+                <button type="button" class="btn btn-secondary" onclick="showRegistrationForm()">
+                    Create New Account
+                </button>
             </form>
             
              <div class="demo-accounts">
@@ -128,6 +132,216 @@
             <div class="auth-switch">
                 <p>Already have an account? <a href="#" id="switchToLogin">Sign in here</a></p>
             </div>
+        </div>
+    </div>
+
+    <!-- Registration Container -->
+    <div id="registrationContainer" class="auth-container" style="display: none;">
+        <div class="auth-card" style="max-width: 800px;">
+            <div class="auth-header">
+                <div class="auth-logo-icon">📝</div>
+                <h1 class="auth-title">Create Your Account</h1>
+                <p class="auth-subtitle">Register as a barangay resident</p>
+            </div>
+            
+            <div id="registrationMessage" class="auth-message" style="display: none;"></div>
+            
+            <form id="registrationForm" class="auth-form">
+                <!-- Personal Information Section -->
+                <div class="form-section">
+                    <h3 class="section-title">📋 Personal Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regFirstName">First Name *</label>
+                            <input type="text" id="regFirstName" name="first_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regLastName">Last Name *</label>
+                            <input type="text" id="regLastName" name="last_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regMiddleName">Middle Name</label>
+                            <input type="text" id="regMiddleName" name="middle_name">
+                        </div>
+                        <div class="form-group">
+                            <label for="regSex">Sex *</label>
+                            <select id="regSex" name="sex" required>
+                                <option value="">Select Sex</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="regBirthDate">Birth Date *</label>
+                            <input type="date" id="regBirthDate" name="birth_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regCivilStatus">Civil Status *</label>
+                            <select id="regCivilStatus" name="civil_status" required>
+                                <option value="">Select Status</option>
+                                <option value="Single">Single</option>
+                                <option value="Married">Married</option>
+                                <option value="Widowed">Widowed</option>
+                                <option value="Separated">Separated</option>
+                                <option value="Divorced">Divorced</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information Section -->
+                <div class="form-section">
+                    <h3 class="section-title">📞 Contact Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regEmail">Email Address *</label>
+                            <input type="email" id="regEmail" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regMobileNumber">Mobile Number *</label>
+                            <input type="tel" id="regMobileNumber" name="mobile_number" required placeholder="09XXXXXXXXX">
+                        </div>
+                        <div class="form-group">
+                            <label for="regLandlineNumber">Landline Number</label>
+                            <input type="tel" id="regLandlineNumber" name="landline_number" placeholder="(02) XXX-XXXX">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Information Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🏠 Address Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regHouseNo">House/Unit Number *</label>
+                            <input type="text" id="regHouseNo" name="house_no" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regStreet">Street *</label>
+                            <input type="text" id="regStreet" name="street" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPurok">Purok/Zone *</label>
+                            <input type="text" id="regPurok" name="purok" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regBarangay">Barangay *</label>
+                            <input type="text" id="regBarangay" name="barangay" value="Sample Barangay" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regCity">City/Municipality *</label>
+                            <input type="text" id="regCity" name="city" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regProvince">Province *</label>
+                            <input type="text" id="regProvince" name="province" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regZipCode">ZIP Code</label>
+                            <input type="text" id="regZipCode" name="zip_code" maxlength="4">
+                        </div>
+                        <div class="form-group">
+                            <label for="regYearsOfResidency">Years of Residency *</label>
+                            <input type="number" id="regYearsOfResidency" name="years_of_residency" min="0" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employment Information Section -->
+                <div class="form-section">
+                    <h3 class="section-title">💼 Employment Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regEmploymentStatus">Employment Status *</label>
+                            <select id="regEmploymentStatus" name="employment_status" required>
+                                <option value="">Select Status</option>
+                                <option value="Employed">Employed</option>
+                                <option value="Unemployed">Unemployed</option>
+                                <option value="Student">Student</option>
+                                <option value="Self-employed">Self-employed</option>
+                                <option value="Retired">Retired</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="regOccupation">Occupation</label>
+                            <input type="text" id="regOccupation" name="occupation">
+                        </div>
+                        <div class="form-group">
+                            <label for="regPlaceOfWork">Place of Work</label>
+                            <input type="text" id="regPlaceOfWork" name="place_of_work">
+                        </div>
+                        <div class="form-group">
+                            <label for="regMonthlyIncomeRange">Monthly Income Range</label>
+                            <select id="regMonthlyIncomeRange" name="monthly_income_range">
+                                <option value="">Select Range</option>
+                                <option value="Below 10,000">Below ₱10,000</option>
+                                <option value="10,000 - 25,000">₱10,000 - ₱25,000</option>
+                                <option value="25,000 - 50,000">₱25,000 - ₱50,000</option>
+                                <option value="50,000 - 75,000">₱50,000 - ₱75,000</option>
+                                <option value="75,000 - 100,000">₱75,000 - ₱100,000</option>
+                                <option value="Above 100,000">Above ₱100,000</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Contact Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🚨 Emergency Contact</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regEmergencyContactName">Contact Name *</label>
+                            <input type="text" id="regEmergencyContactName" name="emergency_contact_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmergencyContactRelationship">Relationship *</label>
+                            <select id="regEmergencyContactRelationship" name="emergency_contact_relationship" required>
+                                <option value="">Select Relationship</option>
+                                <option value="Spouse">Spouse</option>
+                                <option value="Parent">Parent</option>
+                                <option value="Child">Child</option>
+                                <option value="Sibling">Sibling</option>
+                                <option value="Relative">Relative</option>
+                                <option value="Friend">Friend</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmergencyContactNumber">Contact Number *</label>
+                            <input type="tel" id="regEmergencyContactNumber" name="emergency_contact_number" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="regEmergencyContactAddress">Contact Address</label>
+                            <textarea id="regEmergencyContactAddress" name="emergency_contact_address" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Security Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🔒 Account Security</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regPassword">Password *</label>
+                            <input type="password" id="regPassword" name="password" required minlength="6">
+                            <small>Minimum 6 characters</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="regConfirmPassword">Confirm Password *</label>
+                            <input type="password" id="regConfirmPassword" name="confirm_password" required minlength="6">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="showLoginForm()">
+                        ← Back to Login
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Create Account
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
