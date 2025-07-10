@@ -42,14 +42,14 @@
                 <div class="demo-accounts" id="demoAccounts">
                 <div class="demo-title">Demo Accounts</div>
                 <div class="demo-account">
-                    <strong>Resident:</strong> john.doe@email.com / 123456<br>
+                    <strong>Resident:</strong> john.doe@email.com / password<br>
                     <button type="button" class="btn btn-secondary" 
                             onclick="fillDemoAccount('john.doe@email.com', '123456')">
                         Use Resident Demo
                     </button>
                 </div>
                 <div class="demo-account" style="margin-top: 10px;">
-                    <strong>Admin:</strong> admin@barangay.gov.ph / admin123<br>
+                    <strong>Admin:</strong> admin@barangay.gov.ph / password<br>
                     <button type="button" class="btn btn-secondary" 
                 <p>Need an account? <a href="#" onclick="showRegistrationForm()">Sign Up</a> | <a href="admin.php">Admin Portal</a> | <a href="staff.php">Staff Portal</a></p>
                         Use Admin Demo
@@ -1226,6 +1226,40 @@
                 console.error('Session check error:', error);
                 showMessage(data.message || 'Session check failed', 'error');
             }
+        }
+        
+        // Demo account functions
+        function useResidentDemo() {
+            const email = 'john.doe@email.com';
+            const password = 'password';
+            
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = password;
+            
+            // Automatically submit the login form
+            login();
+        }
+        
+        function useAdminDemo() {
+            const email = 'admin@barangay.gov.ph';
+            const password = 'password';
+            
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = password;
+            
+            // Automatically submit the login form
+            login();
+        }
+        
+        function useStaffDemo() {
+            const email = 'staff@barangay.gov.ph';
+            const password = 'password';
+            
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = password;
+            
+            // Automatically submit the login form
+            login();
         }
         
         function showMessage(message, type) {
