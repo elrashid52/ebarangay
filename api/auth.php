@@ -286,7 +286,6 @@ switch($action) {
                             'type' => 'resident'
                         ],
                         'redirect' => 'resident'
-                        'redirect' => 'resident'
                     ]);
                     exit;
                 } else {
