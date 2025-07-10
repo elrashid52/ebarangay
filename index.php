@@ -18,12 +18,12 @@
                 <p class="auth-subtitle">Sign in to your E-Barangay account</p>
             </div>
             
-            <form id="signInForm" class="auth-form">
+            <form class="auth-form" id="loginForm">
                 <div class="form-group">
                     <label for="email">Email Address</label>
                     <div class="input-wrapper">
                         <input type="email" id="email" name="email" placeholder="Enter your email" required>
-                        <span class="input-icon">📧</span>
+                        <i class="input-icon">📧</i>
                     </div>
                 </div>
                 
@@ -31,7 +31,7 @@
                     <label for="password">Password</label>
                     <div class="input-wrapper">
                         <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                        <span class="input-icon">🔒</span>
+                        <i class="input-icon">🔒</i>
                     </div>
                 </div>
                 
@@ -56,8 +56,47 @@
                 </div>
             </div> 
             
-            <div id="loginSwitch" class="auth-switch">
-                <p>Don't have an account? <a href="#" id="switchToRegister">Sign up here</a></p>
+            <form class="auth-form" id="signupForm" style="display: none;">
+                <div class="form-group">
+                    <label for="signup_first_name">First Name</label>
+                    <input type="text" id="signup_first_name" name="first_name" placeholder="Enter your first name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_last_name">Last Name</label>
+                    <input type="text" id="signup_last_name" name="last_name" placeholder="Enter your last name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_email">Email Address</label>
+                    <input type="email" id="signup_email" name="email" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_birth_date">Birth Date</label>
+                    <input type="date" id="signup_birth_date" name="birth_date">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_phone">Phone Number</label>
+                    <input type="tel" id="signup_phone" name="phone" placeholder="Enter your phone number" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_password">Password</label>
+                    <input type="password" id="signup_password" name="password" placeholder="Enter your password" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_confirm_password">Confirm Password</label>
+                    <input type="password" id="signup_confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+            </form>
+
+            <div class="auth-switch">
+                <p id="authSwitchText">Don't have an account? <a href="#" onclick="toggleAuthForm()">Sign up here</a></p>
             </div>
 
             <!-- Sign Up Form -->
@@ -926,7 +965,150 @@
 
     <script>
         let currentUser = null;
-        let currentView = 'dashboard';
+        let isSignUpMode = false;
+        
+        // Check session on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSession();
+        });
+        
+        // Toggle between login and signup forms
+        function toggleAuthForm() {
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const authTitle = document.querySelector('.auth-title');
+            const authSubtitle = document.querySelector('.auth-subtitle');
+            const authSwitchText = document.getElementById('authSwitchText');
+            
+            if (isSignUpMode) {
+                // Switch to login
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+                authTitle.textContent = 'Welcome Back';
+                authSubtitle.textContent = 'Sign in to your E-Barangay account';
+                authSwitchText.innerHTML = 'Don\'t have an account? <a href="#" onclick="toggleAuthForm()">Sign up here</a>';
+                isSignUpMode = false;
+            } else {
+                // Switch to signup
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+                authTitle.textContent = 'Create Account';
+                authSubtitle.textContent = 'Join the E-Barangay community';
+                authSwitchText.innerHTML = 'Already have an account? <a href="#" onclick="toggleAuthForm()">Sign in here</a>';
+                isSignUpMode = true;
+            }
+        }
+        
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showMessage('Please fill in all fields', 'error');
+                return;
+            }
+            
+            login(email, password);
+        });
+        
+        // Handle signup form submission
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const password = formData.get('password');
+            const confirmPassword = formData.get('confirm_password');
+            
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match', 'error');
+                return;
+            }
+            
+            // Validate password length
+            if (password.length < 6) {
+                showMessage('Password must be at least 6 characters long', 'error');
+                return;
+            }
+            
+            register(formData);
+        });
+        
+        // Register function
+        function register(formData) {
+            formData.append('action', 'register');
+            
+            fetch('api/auth.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('Registration successful! Please sign in with your new account.', 'success');
+                    // Reset form and switch to login
+                    document.getElementById('signupForm').reset();
+                    setTimeout(() => {
+                        toggleAuthForm();
+                    }, 2000);
+                } else {
+                    showMessage(data.message || 'Registration failed', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Registration error:', error);
+                showMessage('Registration failed. Please try again.', 'error');
+            });
+        }
+        
+        // Login function
+        function login(email, password) {
+            const formData = new FormData();
+            formData.append('action', 'login');
+            formData.append('email', email);
+            formData.append('password', password);
+            
+            fetch('api/auth.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentUser = data.user;
+                    showMessage('Login successful!', 'success');
+                    
+                    // Redirect based on user type
+                    setTimeout(() => {
+                        if (data.redirect === 'admin') {
+                            window.location.href = 'admin.php';
+                        } else {
+                            showDashboard();
+                        }
+                    }, 1000);
+                } else {
+                    showMessage(data.message || 'Login failed', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Login error:', error);
+                showMessage('Login failed. Please try again.', 'error');
+            });
+        }
+        
+        // Use demo account
+        function useDemoAccount(type) {
+            if (type === 'resident') {
+                document.getElementById('email').value = 'john.doe@email.com';
+                document.getElementById('password').value = 'password';
+            } else if (type === 'admin') {
+                document.getElementById('email').value = 'admin@barangay.gov.ph';
+                document.getElementById('password').value = 'password';
+            }
+        }
         
         // Toggle between login and signup forms
         document.getElementById('showSignup').addEventListener('click', function(e) {

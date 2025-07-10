@@ -17,10 +17,9 @@ switch($action) {
         $password = $_POST['password'] ?? '';
         $first_name = $_POST['first_name'] ?? '';
         $last_name = $_POST['last_name'] ?? '';
-        $middle_name = $_POST['middle_name'] ?? '';
         $phone = $_POST['phone'] ?? '';
         $birth_date = $_POST['birth_date'] ?? '';
-        $civil_status = $_POST['civil_status'] ?? 'Single';
+        $civil_status = 'Single'; // Default value
         
         if(empty($email) || empty($password) || empty($first_name) || empty($last_name) || empty($phone)) {
             echo json_encode(['success' => false, 'message' => 'Required fields are missing']);
@@ -32,22 +31,46 @@ switch($action) {
             exit;
         }
         
-        $resident->email = $email;
+        // Check if email already exists
+        $checkQuery = "SELECT id FROM residents WHERE email = :email LIMIT 1";
+        $checkStmt = $db->prepare($checkQuery);
+        $checkStmt->bindParam(':email', $email);
+        $checkStmt->execute();
         
-        if($resident->emailExists()) {
+        if($checkStmt->rowCount() > 0) {
             echo json_encode(['success' => false, 'message' => 'Email already exists']);
             exit;
         }
         
-        $resident->password = $password;
-        $resident->first_name = $first_name;
-        $resident->last_name = $last_name;
-        $resident->middle_name = $middle_name;
-        $resident->mobile_number = $phone;
-        $resident->birth_date = $birth_date;
-        $resident->civil_status = $civil_status;
+        // Calculate age from birth_date if provided
+        $age = null;
+        if (!empty($birth_date)) {
+            $birthDate = new DateTime($birth_date);
+            $today = new DateTime();
+            $age = $today->diff($birthDate)->y;
+        }
         
-        if($resident->register()) {
+        // Insert new resident
+        $query = "INSERT INTO residents (email, password, first_name, last_name, mobile_number, birth_date, age, civil_status, role, status) 
+                  VALUES (:email, :password, :first_name, :last_name, :mobile_number, :birth_date, :age, :civil_status, 'Resident', 'Active')";
+        
+        $stmt = $db->prepare($query);
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        
+        $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':password', $hashedPassword);
+        $stmt->bindParam(':first_name', $first_name);
+        $stmt->bindParam(':last_name', $last_name);
+        $stmt->bindParam(':mobile_number', $phone);
+        $stmt->bindParam(':birth_date', $birth_date);
+        $stmt->bindParam(':age', $age);
+        $stmt->bindParam(':civil_status', $civil_status);
+        
+        if($stmt->execute()) {
+            // Log user registration activity
+            $newUserId = $db->lastInsertId();
+            logUserLoginActivity($newUserId, 'register', 'New resident account created');
+            
             echo json_encode(['success' => true, 'message' => 'Registration successful']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Registration failed']);
