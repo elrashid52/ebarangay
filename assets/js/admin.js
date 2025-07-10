@@ -218,6 +218,9 @@ function showAdminPage(page) {
             loadAdminActivitiesData();
             logAdminActivity('view_activities', 'page', null, 'Viewed activity reports page');
             break;
+        case 'users':
+            loadUsersData();
+            break;
         case 'backup':
             loadBackupData();
             break;
@@ -1634,6 +1637,231 @@ function clearActivityFilters() {
     // Log filter clear
     logAdminActivity('clear_activity_filters', 'ui', null, 'Cleared activity filters');
 }
+
+// Admin Users Management
+async function loadUsersData() {
+    try {
+        const response = await fetch('api/admin-users.php?action=get_all');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayUsersTable(data.users);
+        }
+    } catch (error) {
+        console.error('Failed to load admin users:', error);
+    }
+}
+
+function displayUsersTable(users) {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
+    
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b;">No admin users found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td>
+                <div style="font-weight: 600;">${user.first_name} ${user.last_name}</div>
+            </td>
+            <td>${user.email}</td>
+            <td>
+                <span class="role-badge ${user.role.toLowerCase().replace(' ', '-')}">${user.role}</span>
+            </td>
+            <td>
+                <span class="status-badge ${user.status}">${user.status}</span>
+            </td>
+            <td>${user.last_login ? formatDate(user.last_login) : 'Never'}</td>
+            <td>${formatDate(user.created_at)}</td>
+            <td>
+                <button class="action-btn view" onclick="editUser(${user.id})" title="Edit">✏️</button>
+                <button class="action-btn download" onclick="resetUserPassword(${user.id})" title="Reset Password">🔑</button>
+                <button class="action-btn reupload" onclick="toggleUserStatus(${user.id})" title="Toggle Status">🔄</button>
+                ${user.id != currentUser.id ? `<button class="action-btn view" onclick="deleteUser(${user.id})" title="Delete" style="background: #fef2f2; color: #dc2626;">🗑️</button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openAddUserModal() {
+    document.getElementById('userModalTitle').textContent = 'Add Admin User';
+    document.getElementById('userSubmitBtn').textContent = 'Add User';
+    document.getElementById('userForm').reset();
+    document.getElementById('userId').value = '';
+    document.getElementById('passwordSection').style.display = 'block';
+    document.getElementById('userPassword').required = false;
+    document.getElementById('userModal').classList.add('active');
+    document.getElementById('userModal').style.display = 'flex';
+}
+
+async function editUser(userId) {
+    try {
+        const response = await fetch(`api/admin-users.php?action=get_by_id&id=${userId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const user = data.user;
+            document.getElementById('userModalTitle').textContent = 'Edit Admin User';
+            document.getElementById('userSubmitBtn').textContent = 'Update User';
+            document.getElementById('userId').value = user.id;
+            document.getElementById('userFirstName').value = user.first_name;
+            document.getElementById('userLastName').value = user.last_name;
+            document.getElementById('userEmail').value = user.email;
+            document.getElementById('userRole').value = user.role;
+            document.getElementById('userStatus').value = user.status;
+            document.getElementById('passwordSection').style.display = 'none';
+            document.getElementById('userModal').classList.add('active');
+            document.getElementById('userModal').style.display = 'flex';
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to load user details:', error);
+        showMessage('Failed to load user details', 'error');
+    }
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').classList.remove('active');
+    document.getElementById('userModal').style.display = 'none';
+    document.getElementById('userForm').reset();
+}
+
+async function resetUserPassword(userId) {
+    document.getElementById('resetUserId').value = userId;
+    document.getElementById('resetPasswordModal').classList.add('active');
+    document.getElementById('resetPasswordModal').style.display = 'flex';
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').classList.remove('active');
+    document.getElementById('resetPasswordModal').style.display = 'none';
+    document.getElementById('resetPasswordForm').reset();
+}
+
+async function toggleUserStatus(userId) {
+    if (!confirm('Are you sure you want to toggle this user\'s status?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=toggle_status&id=${userId}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            loadUsersData();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to toggle user status:', error);
+        showMessage('Failed to toggle user status', 'error');
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to delete this admin user? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=delete&id=${userId}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            loadUsersData();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to delete user:', error);
+        showMessage('Failed to delete user', 'error');
+    }
+}
+
+// Event Listeners for User Management
+document.addEventListener('DOMContentLoaded', function() {
+    // User form submission
+    const userForm = document.getElementById('userForm');
+    if (userForm) {
+        userForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const userId = formData.get('id');
+            const action = userId ? 'update' : 'add';
+            formData.append('action', action);
+            
+            try {
+                const response = await fetch('api/admin-users.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeUserModal();
+                    loadUsersData();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to save user:', error);
+                showMessage('Failed to save user', 'error');
+            }
+        });
+    }
+    
+    // Reset password form submission
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            formData.append('action', 'reset_password');
+            
+            try {
+                const response = await fetch('api/admin-users.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeResetPasswordModal();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to reset password:', error);
+                showMessage('Failed to reset password', 'error');
+            }
+        });
+    }
+});
 
 // Backup and Restore Functions
 async function loadBackupData() {

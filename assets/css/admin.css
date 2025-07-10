@@ -1551,6 +1551,39 @@ body {
     color: #991b1b;
 }
 
+/* Role badges */
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.role-badge.super-admin {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.role-badge.admin {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.role-badge.moderator {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.role-badge.staff {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
 .status-badge.ready_for_pickup {
     background: #e0e7ff;
     color: #3730a3;
