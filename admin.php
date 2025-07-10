@@ -546,44 +546,41 @@
                     <p class="admin-page-subtitle">Manage system backups and data restoration</p>
                 </div>
                 
-                <!-- Backup Statistics -->
+                <!-- Dashboard Cards -->
                 <div class="dashboard-grid" style="margin-bottom: 30px;">
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <div class="card-icon total">💾</div>
+                            <div class="card-icon total">📊</div>
                             <div class="card-content">
                                 <h3>Total Backups</h3>
                                 <div class="card-number" id="totalBackups">0</div>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <div class="card-icon approved">📊</div>
+                            <div class="card-icon pending">💾</div>
                             <div class="card-content">
                                 <h3>Total Size</h3>
-                                <div class="card-number" id="totalBackupSize" style="font-size: 1.5rem;">0 B</div>
+                                <div class="card-number" id="totalSize">0 MB</div>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <div class="card-icon pending">📅</div>
+                            <div class="card-icon approved">📅</div>
                             <div class="card-content">
                                 <h3>Latest Backup</h3>
-                                <div class="card-number" id="latestBackup" style="font-size: 1rem;">Never</div>
+                                <div class="card-number" id="latestBackup">Never</div>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <div class="card-icon blotter">⚡</div>
+                            <div class="card-icon blotter">✅</div>
                             <div class="card-content">
                                 <h3>Status</h3>
-                                <div class="card-number" id="backupStatus" style="font-size: 1.2rem;">Ready</div>
+                                <div class="card-number" id="backupStatus">Ready</div>
                             </div>
                         </div>
                     </div>
@@ -591,27 +588,93 @@
                 
                 <!-- Create Backup Section -->
                 <div class="form-container" style="margin-bottom: 30px;">
-                    <h3 style="margin-bottom: 20px;">Create New Backup</h3>
-                    <form id="createBackupForm" onsubmit="event.preventDefault(); createBackup();">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="backupName">Backup Name</label>
-                                <input type="text" id="backupName" placeholder="Enter backup name (optional)" />
-                            </div>
-                            <div class="form-group">
-                                <label for="backupType">Backup Type</label>
-                                <select id="backupType">
-                                    <option value="full">Full Backup (Database + Files)</option>
-                                    <option value="database">Database Only</option>
-                                    <option value="files">Files Only</option>
-                                </select>
-                            </div>
+                    <div class="section-title">
+                        <h2>🔄 Create New Backup</h2>
+                        <p>Secure your system data with automated backup creation</p>
+                    </div>
+                    
+                    <form id="createBackupForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="backupName">Backup Name</label>
+                            <input type="text" id="backupName" name="backup_name" placeholder="Leave empty for auto-generated name">
+                            <small style="color: #64748b;">Optional: Custom name for easy identification</small>
                         </div>
-                        <button type="submit" class="btn btn-primary">Create Backup</button>
+                        
+                        <div class="form-group">
+                            <label for="backupType">Backup Type</label>
+                            <select id="backupType" name="backup_type">
+                                <option value="full">Full Backup (Database + Files)</option>
+                                <option value="database">Database Only</option>
+                                <option value="files">Files Only</option>
+                            </select>
+                            <small style="color: #64748b;">Choose what to include in your backup</small>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <button type="submit" class="btn btn-primary">
+                                💾
+                                Create Backup
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="scheduleBackup()" style="margin-left: 10px;">
+                                ⏰
+                                Schedule Backup
+                            </button>
+                        </div>
                     </form>
                 </div>
                 
-                <!-- Backup List -->
+                <!-- Backup History -->
+                <div class="form-container">
+                    <div class="section-header">
+                        <h2>📋 Backup History</h2>
+                        <button class="btn btn-secondary" onclick="refreshBackupList()">
+                            🔄
+                            Refresh
+                        </button>
+                    </div>
+                    
+                    <div class="data-grid-container">
+                        <table class="data-grid-table">
+                            <thead>
+                                <tr>
+                                    <th>BACKUP NAME</th>
+                                    <th>TYPE</th>
+                                    <th>SIZE</th>
+                                    <th>DATE CREATED</th>
+                                    <th>STATUS</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backupTableBody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: #64748b;">Loading backups...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Backup Guidelines -->
+                <div class="form-container">
+                    <div class="section-title">
+                        <h2>📋 Backup Guidelines & Best Practices</h2>
+                        <p>Follow these recommendations to ensure reliable data protection:</p>
+                    </div>
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6;">
+                        <ul style="margin: 0; padding-left: 20px; color: #374151;">
+                            <li style="margin-bottom: 8px;"><strong>Regular Backups:</strong> Create backups at least weekly or before major system changes</li>
+                            <li style="margin-bottom: 8px;"><strong>Multiple Copies:</strong> Keep backups in different locations for redundancy</li>
+                            <li style="margin-bottom: 8px;"><strong>Test Restores:</strong> Periodically test backup restoration to ensure data integrity</li>
+                            <li style="margin-bottom: 8px;"><strong>Secure Storage:</strong> Store backups in secure, encrypted locations</li>
+                            <li style="margin-bottom: 8px;"><strong>Retention Policy:</strong> Keep multiple backup versions and clean up old ones regularly</li>
+                            <li style="margin-bottom: 8px;"><strong>Documentation:</strong> Maintain records of backup schedules and restoration procedures</li>
+                        </ul>
+                        <div style="margin-top: 15px; padding: 10px; background: #eff6ff; border-radius: 8px; color: #1e40af;">
+                            <strong>Important:</strong> Always verify the current backup version before performing system maintenance or updates.
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Backup Statistics -->
                 <div class="admin-dashboard-grid" style="margin-bottom: 30px;">
                     <div class="admin-dashboard-card">
@@ -800,24 +863,20 @@
                             <ul class="guideline-list">
                                 <li>Encrypt sensitive backup files</li>
                                 <li>Limit backup access permissions</li>
-                        <h2>Existing Backups</h2>
-                        <button class="btn btn-secondary" onclick="loadBackupData()">Refresh List</button>
                                 <li>Regularly audit backup logs</li>
                                 <li>Implement backup retention policies</li>
                             </ul>
                         </div>
                         
                         <div class="guideline-card recovery-steps">
-                                    <th>NAME & TYPE</th>
+                            <div class="guideline-header">
                                 <div class="guideline-icon">🔄</div>
                                 <h3>Recovery Steps</h3>
                             </div>
                             <ul class="guideline-list">
                                 <li>Identify the correct backup version</li>
                                 <li>Verify backup file integrity</li>
-                            <tbody id="backupListBody">
                                 <li>Restore database first, then files</li>
-                                    <td colspan="5" style="text-align: center; color: #64748b;">Loading backups...</td>
                                 <li>Update users about the restoration</li>
                             </ul>
                         </div>
