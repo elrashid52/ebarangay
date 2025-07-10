@@ -1640,20 +1640,14 @@ function clearActivityFilters() {
 
 // Admin Users Management
 async function loadAdminUsersData() {
-    console.log('Loading admin users data...');
     try {
-        // First try to seed demo data if table is empty
-        await fetch('api/admin-users.php?action=seed_demo_data');
-        
         const response = await fetch('api/admin-users.php?action=get_all');
         const data = await response.json();
-        console.log('Admin users response:', data);
         
         if (data.success) {
             displayAdminUsersTable(data.users);
-            console.log('Displaying', data.users.length, 'admin users');
         } else {
-            console.error('Failed to load admin users:', data.message);
+            showMessage(data.message, 'error');
             displayAdminUsersTable([]);
         }
     } catch (error) {
@@ -1669,17 +1663,8 @@ function displayAdminUsersTable(users) {
     if (users.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-                        <div style="font-size: 3rem; opacity: 0.5;">👥</div>
-                        <div>
-                            <h3 style="margin: 0 0 8px 0; color: #374151;">No Admin Users Found</h3>
-                            <p style="margin: 0; opacity: 0.8;">Create your first admin user to get started</p>
-                        </div>
-                        <button onclick="openAddAdminUserModal()" class="btn btn-primary" style="margin-top: 8px;">
-                            ➕ Add First Admin User
-                        </button>
-                    </div>
+                <td colspan="7" style="text-align: center; color: #64748b; padding: 20px;">
+                    No admin users found. Click "Add Admin User" to get started.
                 </td>
             </tr>
         `;
@@ -1689,50 +1674,48 @@ function displayAdminUsersTable(users) {
     tbody.innerHTML = users.map(user => `
         <tr>
             <td>
-                <div style="font-weight: 600; color: #111827;">${user.first_name} ${user.last_name}</div>
-                <div style="font-size: 0.875rem; color: #6b7280;">${user.email}</div>
+                <div style="font-weight: 600;">${user.first_name} ${user.last_name}</div>
+                <div style="font-size: 0.875rem; color: #64748b;">${user.email}</div>
             </td>
             <td>${user.email}</td>
-            <td>
-                <span class="role-badge ${user.role.toLowerCase().replace(' ', '-')}">${user.role}</span>
-            </td>
-            <td>
-                <span class="status-badge ${user.status}">${user.status}</span>
-            </td>
+            <td><span class="role-badge ${user.role.toLowerCase().replace(' ', '-')}">${user.role}</span></td>
+            <td><span class="status-badge ${user.status}">${user.status}</span></td>
             <td>${user.last_login ? formatDate(user.last_login) : 'Never'}</td>
             <td>${formatDate(user.created_at)}</td>
             <td>
-                <div class="action-buttons">
-                    <button class="action-btn view" onclick="viewAdminUser(${user.id})" title="View">👁️</button>
-                    <button class="action-btn edit" onclick="editAdminUser(${user.id})" title="Edit">✏️</button>
-                    <button class="action-btn reset" onclick="resetAdminUserPassword(${user.id})" title="Reset Password">🔑</button>
-                    <button class="action-btn toggle" onclick="toggleAdminUserStatus(${user.id})" title="Toggle Status">
-                        ${user.status === 'Active' ? '🔒' : '🔓'}
-                    </button>
-                    ${user.id != currentUser.id ? `<button class="action-btn delete" onclick="deleteAdminUser(${user.id})" title="Delete">🗑️</button>` : ''}
-                </div>
+                <button class="action-btn view" onclick="viewAdminUser(${user.id})" title="View">👁️</button>
+                <button class="action-btn edit" onclick="editAdminUser(${user.id})" title="Edit">✏️</button>
+                <button class="action-btn reset" onclick="resetAdminUserPassword(${user.id})" title="Reset Password">🔑</button>
+                <button class="action-btn toggle" onclick="toggleAdminUserStatus(${user.id})" title="Toggle Status">🔄</button>
+                <button class="action-btn delete" onclick="deleteAdminUser(${user.id})" title="Delete">🗑️</button>
             </td>
         </tr>
     `).join('');
 }
 
-// Add admin user functions
+// Open Add Admin User Modal
 function openAddAdminUserModal() {
-    console.log('Opening add admin user modal');
-    document.getElementById('addAdminUserModal').classList.add('active');
-    document.getElementById('addAdminUserModal').style.display = 'flex';
-    document.getElementById('addAdminUserForm').reset();
+    const modal = document.getElementById('addAdminUserModal');
+    if (modal) {
+        // Reset form
+        document.getElementById('addAdminUserForm').reset();
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
 }
 
+// Close Add Admin User Modal
 function closeAddAdminUserModal() {
-    document.getElementById('addAdminUserModal').classList.remove('active');
-    document.getElementById('addAdminUserModal').style.display = 'none';
-    document.getElementById('addAdminUserForm').reset();
+    const modal = document.getElementById('addAdminUserModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
 }
 
+// Handle Add Admin User Form
 async function handleAddAdminUser(e) {
     e.preventDefault();
-    console.log('Submitting add admin user form');
     
     const formData = new FormData(e.target);
     formData.append('action', 'add');
@@ -1741,7 +1724,7 @@ async function handleAddAdminUser(e) {
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Adding User...';
+    submitBtn.textContent = 'Adding...';
     
     try {
         const response = await fetch('api/admin-users.php', {
@@ -1750,15 +1733,11 @@ async function handleAddAdminUser(e) {
         });
         
         const data = await response.json();
-        console.log('Add admin user response:', data);
         
         if (data.success) {
             showMessage(data.message, 'success');
             closeAddAdminUserModal();
-            // Force refresh after a short delay to ensure database is updated
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
+            loadAdminUsersData(); // Refresh the list
         } else {
             showMessage(data.message, 'error');
         }
@@ -1772,338 +1751,100 @@ async function handleAddAdminUser(e) {
     }
 }
 
-async function editAdminUser(id) {
-    console.log('Editing admin user:', id);
-    try {
-        const response = await fetch(`api/admin-users.php?action=get_by_id&id=${id}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            const user = data.user;
-            
-            // Populate edit form
-            document.getElementById('editAdminUserId').value = user.id;
-            document.getElementById('editAdminUserFirstName').value = user.first_name;
-            document.getElementById('editAdminUserLastName').value = user.last_name;
-            document.getElementById('editAdminUserEmail').value = user.email;
-            document.getElementById('editAdminUserRole').value = user.role;
-            document.getElementById('editAdminUserStatus').value = user.status;
-            
-            // Show modal
-            document.getElementById('editAdminUserModal').classList.add('active');
-            document.getElementById('editAdminUserModal').style.display = 'flex';
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to load admin user:', error);
-        showMessage('Failed to load admin user details', 'error');
-    }
-}
-
-function closeEditAdminUserModal() {
-    document.getElementById('editAdminUserModal').classList.remove('active');
-    document.getElementById('editAdminUserModal').style.display = 'none';
-    document.getElementById('editAdminUserForm').reset();
-}
-
-async function handleEditAdminUser(e) {
-    e.preventDefault();
-    console.log('Submitting edit admin user form');
-    
-    const formData = new FormData(e.target);
-    formData.append('action', 'update');
-    
-    // Show loading state
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Updating User...';
-    
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        console.log('Edit admin user response:', data);
-        
-        if (data.success) {
-            showMessage(data.message, 'success');
-            closeEditAdminUserModal();
-            // Force refresh after a short delay
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to update admin user:', error);
-        showMessage('Failed to update admin user', 'error');
-    } finally {
-        // Restore button state
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-    }
-}
-
-async function resetAdminUserPassword(id) {
-    const newPassword = prompt('Enter new password (leave empty for default "password"):') || 'password';
-    
-    if (!newPassword) return;
-    
-    console.log('Resetting password for admin user:', id);
-    
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=reset_password&id=${id}&new_password=${encodeURIComponent(newPassword)}`
-        });
-        
-        const data = await response.json();
-        console.log('Reset password response:', data);
-        
-        if (data.success) {
-            showMessage(data.message, 'success');
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to reset password:', error);
-        showMessage('Failed to reset password', 'error');
-    }
-}
-
-async function toggleAdminUserStatus(id) {
-    console.log('Toggling status for admin user:', id);
-    
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=toggle_status&id=${id}`
-        });
-        
-        const data = await response.json();
-        console.log('Toggle status response:', data);
-        
-        if (data.success) {
-            showMessage(data.message, 'success');
-            // Force refresh after a short delay
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to toggle status:', error);
-        showMessage('Failed to toggle status', 'error');
-    }
-}
-
-async function deleteAdminUser(id) {
-    if (!confirm('Are you sure you want to delete this admin user? This action cannot be undone.')) {
-        return;
-    }
-    
-    console.log('Deleting admin user:', id);
-    
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=delete&id=${id}`
-        });
-        
-        const data = await response.json();
-        console.log('Delete admin user response:', data);
-        
-        if (data.success) {
-            showMessage(data.message, 'success');
-            // Force refresh after a short delay
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to delete admin user:', error);
-        showMessage('Failed to delete admin user', 'error');
-    }
-}
-
-async function viewAdminUser(id) {
-    console.log('Viewing admin user:', id);
-    try {
-        const response = await fetch(`api/admin-users.php?action=get_by_id&id=${id}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            const user = data.user;
-            
-            // Populate view modal
-            document.getElementById('viewAdminUserDetails').innerHTML = `
-                <div class="user-details-grid">
-                    <div class="detail-item">
-                        <label>Name</label>
-                        <span>${user.first_name} ${user.last_name}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Email</label>
-                        <span>${user.email}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Role</label>
-                        <span class="role-badge ${user.role.toLowerCase().replace(' ', '-')}">${user.role}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Status</label>
-                        <span class="status-badge ${user.status}">${user.status}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Last Login</label>
-                        <span>${user.last_login ? formatDate(user.last_login) : 'Never'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Created</label>
-                        <span>${formatDate(user.created_at)}</span>
-                    </div>
-                </div>
-            `;
-            
-            // Show modal
-            document.getElementById('viewAdminUserModal').classList.add('active');
-            document.getElementById('viewAdminUserModal').style.display = 'flex';
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to load admin user:', error);
-        showMessage('Failed to load admin user details', 'error');
-    }
-}
-
-function closeViewAdminUserModal() {
-    document.getElementById('viewAdminUserModal').classList.remove('active');
-    document.getElementById('viewAdminUserModal').style.display = 'none';
-}
-
-function updateAdminUsersStats(data) {
-    // Update any stats displays if they exist
-    const totalElement = document.getElementById('totalAdminUsers');
-    if (totalElement) {
-        totalElement.textContent = data.total || 0;
-    }
-}
-
-function openAddAdminUserModal() {
-    document.getElementById('addAdminUserModal').classList.add('active');
-    document.getElementById('addAdminUserModal').style.display = 'flex';
-}
-
-function closeAddAdminUserModal() {
-    document.getElementById('addAdminUserModal').classList.remove('active');
-    document.getElementById('addAdminUserModal').style.display = 'none';
-    document.getElementById('addAdminUserForm').reset();
-}
-
-async function handleAddAdminUser(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    formData.append('action', 'add');
-    
-    // Show loading state
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Adding User...';
-    
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        console.log('Add admin user response:', data); // Debug log
-        
-        if (data.success) {
-            showMessage('Admin user added successfully!', 'success');
-            closeAddAdminUserModal();
-            // Force reload the data
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to add admin user:', error);
-        showMessage('Failed to add admin user. Please try again.', 'error');
-    } finally {
-        // Restore button state
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-    }
-}
-
-function openAddUserModal() {
-    document.getElementById('userModalTitle').textContent = 'Add Admin User';
-    document.getElementById('userSubmitBtn').textContent = 'Add User';
-    document.getElementById('userForm').reset();
-    document.getElementById('userId').value = '';
-    document.getElementById('passwordSection').style.display = 'block';
-    document.getElementById('userPassword').required = false;
-    document.getElementById('userModal').classList.add('active');
-    document.getElementById('userModal').style.display = 'flex';
-}
-
-async function editUser(userId) {
+// View Admin User
+async function viewAdminUser(userId) {
     try {
         const response = await fetch(`api/admin-users.php?action=get_by_id&id=${userId}`);
         const data = await response.json();
         
         if (data.success) {
-            const user = data.user;
-            document.getElementById('userModalTitle').textContent = 'Edit Admin User';
-            document.getElementById('userSubmitBtn').textContent = 'Update User';
-            document.getElementById('userId').value = user.id;
-            document.getElementById('userFirstName').value = user.first_name;
-            document.getElementById('userLastName').value = user.last_name;
-            document.getElementById('userEmail').value = user.email;
-            document.getElementById('userRole').value = user.role;
-            document.getElementById('userStatus').value = user.status;
-            document.getElementById('passwordSection').style.display = 'none';
-            document.getElementById('userModal').classList.add('active');
-            document.getElementById('userModal').style.display = 'flex';
+            showAdminUserViewModal(data.user);
         } else {
             showMessage(data.message, 'error');
         }
     } catch (error) {
-        console.error('Failed to load user details:', error);
+        console.error('Failed to load admin user details:', error);
         showMessage('Failed to load user details', 'error');
     }
 }
 
-function closeUserModal() {
-    document.getElementById('userModal').classList.remove('active');
-    document.getElementById('userModal').style.display = 'none';
-    document.getElementById('userForm').reset();
+// Show Admin User View Modal
+function showAdminUserViewModal(user) {
+    const modal = document.getElementById('viewAdminUserModal');
+    const body = document.getElementById('viewAdminUserBody');
+    
+    document.getElementById('viewAdminUserTitle').textContent = `👤 ${user.first_name} ${user.last_name}`;
+    
+    body.innerHTML = `
+        <div class="user-details">
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <label>Name</label>
+                    <span>${user.first_name} ${user.last_name}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Email</label>
+                    <span>${user.email}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Role</label>
+                    <span class="role-badge ${user.role.toLowerCase().replace(' ', '-')}">${user.role}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Status</label>
+                    <span class="status-badge ${user.status}">${user.status}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Last Login</label>
+                    <span>${user.last_login ? formatDate(user.last_login) : 'Never'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Created</label>
+                    <span>${formatDate(user.created_at)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+    modal.style.display = 'flex';
 }
 
-async function handleUpdateAdminUser(e) {
+// Edit Admin User
+async function editAdminUser(userId) {
+    try {
+        const response = await fetch(`api/admin-users.php?action=get_by_id&id=${userId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            showEditAdminUserModal(data.user);
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to load admin user for editing:', error);
+        showMessage('Failed to load user for editing', 'error');
+    }
+}
+
+// Show Edit Admin User Modal
+function showEditAdminUserModal(user) {
+    const modal = document.getElementById('editAdminUserModal');
+    
+    // Populate form
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('editFirstName').value = user.first_name;
+    document.getElementById('editLastName').value = user.last_name;
+    document.getElementById('editEmail').value = user.email;
+    document.getElementById('editRole').value = user.role;
+    document.getElementById('editStatus').value = user.status;
+    
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+}
+
+// Handle Edit Admin User Form
+async function handleEditAdminUser(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
@@ -2124,18 +1865,15 @@ async function handleUpdateAdminUser(e) {
         const data = await response.json();
         
         if (data.success) {
-            showMessage('Admin user updated successfully!', 'success');
+            showMessage(data.message, 'success');
             closeEditAdminUserModal();
-            // Force reload the data
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
+            loadAdminUsersData(); // Refresh the list
         } else {
             showMessage(data.message, 'error');
         }
     } catch (error) {
         console.error('Failed to update admin user:', error);
-        showMessage('Failed to update admin user. Please try again.', 'error');
+        showMessage('Failed to update admin user', 'error');
     } finally {
         // Restore button state
         submitBtn.disabled = false;
@@ -2143,19 +1881,50 @@ async function handleUpdateAdminUser(e) {
     }
 }
 
-async function resetUserPassword(userId) {
-    document.getElementById('resetUserId').value = userId;
-    document.getElementById('resetPasswordModal').classList.add('active');
-    document.getElementById('resetPasswordModal').style.display = 'flex';
+// Close Edit Admin User Modal
+function closeEditAdminUserModal() {
+    const modal = document.getElementById('editAdminUserModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
 }
 
-function closeResetPasswordModal() {
-    document.getElementById('resetPasswordModal').classList.remove('active');
-    document.getElementById('resetPasswordModal').style.display = 'none';
-    document.getElementById('resetPasswordForm').reset();
+// Reset Admin User Password
+async function resetAdminUserPassword(userId) {
+    const newPassword = prompt('Enter new password (leave empty for default "password"):');
+    if (newPassword === null) return; // User cancelled
+    
+    const password = newPassword.trim() || 'password';
+    
+    if (!confirm(`Are you sure you want to reset the password to "${password}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=reset_password&id=${userId}&new_password=${encodeURIComponent(password)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to reset password:', error);
+        showMessage('Failed to reset password', 'error');
+    }
 }
 
-async function toggleUserStatus(userId) {
+// Toggle Admin User Status
+async function toggleAdminUserStatus(userId) {
     if (!confirm('Are you sure you want to toggle this user\'s status?')) {
         return;
     }
@@ -2173,44 +1942,17 @@ async function toggleUserStatus(userId) {
         
         if (data.success) {
             showMessage(data.message, 'success');
-            loadAdminUsersData();
+            loadAdminUsersData(); // Refresh the list
         } else {
             showMessage(data.message, 'error');
         }
     } catch (error) {
-        console.error('Failed to toggle user status:', error);
-        showMessage('Failed to toggle user status', 'error');
+        console.error('Failed to toggle status:', error);
+        showMessage('Failed to toggle status', 'error');
     }
 }
 
-async function deleteUser(userId) {
-    if (!confirm('Are you sure you want to delete this admin user? This action cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=delete&id=${userId}`
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showMessage(data.message, 'success');
-            loadAdminUsersData();
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to delete user:', error);
-        showMessage('Failed to delete user', 'error');
-    }
-}
-
+// Delete Admin User
 async function deleteAdminUser(userId) {
     if (!confirm('Are you sure you want to delete this admin user? This action cannot be undone.')) {
         return;
@@ -2229,10 +1971,7 @@ async function deleteAdminUser(userId) {
         
         if (data.success) {
             showMessage(data.message, 'success');
-            // Force reload the data
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
+            loadAdminUsersData(); // Refresh the list
         } else {
             showMessage(data.message, 'error');
         }
@@ -2242,213 +1981,24 @@ async function deleteAdminUser(userId) {
     }
 }
 
-async function toggleAdminUserStatus(userId) {
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=toggle_status&id=${userId}`
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showMessage(data.message, 'success');
-            // Force reload the data
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to toggle user status:', error);
-        showMessage('Failed to toggle user status', 'error');
+// Close View Admin User Modal
+function closeViewAdminUserModal() {
+    const modal = document.getElementById('viewAdminUserModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
     }
-}
-
-async function resetAdminUserPassword(userId) {
-    const newPassword = prompt('Enter new password (leave empty for default "password"):') || 'password';
-    
-    if (!newPassword) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('api/admin-users.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=reset_password&id=${userId}&new_password=${encodeURIComponent(newPassword)}`
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showMessage(data.message, 'success');
-            // Force reload the data
-            setTimeout(() => {
-                loadAdminUsersData();
-            }, 500);
-        } else {
-            showMessage(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Failed to reset password:', error);
-        showMessage('Failed to reset password', 'error');
-    }
-}
-
-// Event Listeners for User Management
-document.addEventListener('DOMContentLoaded', function() {
-    // User form submission
-    const userForm = document.getElementById('userForm');
-    if (userForm) {
-        userForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const userId = formData.get('id');
-            const action = userId ? 'update' : 'add';
-            formData.append('action', action);
-            
-            try {
-                const response = await fetch('api/admin-users.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage(data.message, 'success');
-                    closeUserModal();
-                    loadAdminUsersData();
-                } else {
-                    showMessage(data.message, 'error');
-                }
-            } catch (error) {
-                console.error('Failed to save user:', error);
-                showMessage('Failed to save user', 'error');
-            }
-        });
-    }
-    
-    // Reset password form submission
-    const resetPasswordForm = document.getElementById('resetPasswordForm');
-    if (resetPasswordForm) {
-        resetPasswordForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            formData.append('action', 'reset_password');
-            
-            try {
-                const response = await fetch('api/admin-users.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage(data.message, 'success');
-                    closeResetPasswordModal();
-                } else {
-                    showMessage(data.message, 'error');
-                }
-            } catch (error) {
-                console.error('Failed to reset password:', error);
-                showMessage('Failed to reset password', 'error');
-            }
-        });
-    }
-});
-
-// Backup and Restore Functions
-async function loadBackupData() {
-    try {
-        // Load backup statistics
-        const statsResponse = await fetch('api/admin-backup.php?action=get_backup_stats');
-        const statsData = await statsResponse.json();
-        
-        if (statsData.success) {
-            updateBackupStats(statsData.stats);
-        }
-        
-        // Load backups list
-        const response = await fetch('api/admin-backup.php?action=list_backups');
-        const data = await response.json();
-        
-        if (data.success) {
-            displayBackupsTable(data.backups);
-        }
-    } catch (error) {
-        console.error('Failed to load backup data:', error);
-        showAdminMessage('Failed to load backup data', 'error');
-    }
-}
-
-function updateBackupStats(stats) {
-    document.getElementById('totalBackups').textContent = stats.total_backups || 0;
-    document.getElementById('totalBackupSize').textContent = stats.total_size_formatted || '0 B';
-    document.getElementById('latestBackup').textContent = stats.latest_backup || 'Never';
-    document.getElementById('backupStatus').textContent = stats.status || 'Ready';
-}
-
-function displayBackupsTable(backups) {
-    const tbody = document.getElementById('backupsTableBody');
-    if (!tbody) return;
-    
-    if (backups.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b;">No backups found</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = backups.map(backup => {
-        const hasDatabase = backup.database;
-        const hasFiles = backup.files;
-        
-        let typeDisplay = '';
-        if (hasDatabase && hasFiles) {
-            typeDisplay = '<span class="status-badge approved">✅ DATABASE</span> <span class="status-badge rejected">❌ FILES</span>';
-        } else if (hasDatabase) {
-            typeDisplay = '<span class="status-badge approved">✅ DATABASE</span>';
-        } else if (hasFiles) {
-            typeDisplay = '<span class="status-badge pending">📁 FILES</span>';
-        }
-        
-        const status = (hasDatabase && hasFiles) ? 'COMPLETE' : 'PARTIAL';
-        const statusClass = status === 'COMPLETE' ? 'approved' : 'pending';
-        
-        return `
-            <tr>
-                <td>
-                    <div style="font-weight: 600;">${backup.name}</div>
-                    <div style="font-size: 0.875rem; color: #64748b;">${formatAdminDate(backup.created_at)}</div>
-                </td>
-                <td>${typeDisplay}</td>
-                <td>${backup.size_formatted || formatBytes(backup.size)}</td>
-                <td>${formatAdminDate(backup.created_at)}</td>
-                <td><span class="status-badge ${statusClass}">${status}</span></td>
-                <td>
-                    ${hasDatabase ? `<button class="admin-action-btn view" onclick="downloadBackup('${backup.name}', 'database')" title="Download Database">💾</button>` : ''}
-                    ${hasFiles ? `<button class="admin-action-btn view" onclick="downloadBackup('${backup.name}', 'files')" title="Download Files">📁</button>` : ''}
-                    <button class="admin-action-btn approve" onclick="openRestoreModal('${backup.name}', ${hasDatabase}, ${hasFiles})" title="Restore">🔄</button>
-                    <button class="admin-action-btn delete" onclick="deleteBackup('${backup.name}')" title="Delete">🗑️</button>
-                </td>
-            </tr>
-        `;
-    }).join('');
 }
 
 // Backup and Restore functions
 async function createBackup() {
-    const backupName = document.getElementById('backupName').value.trim();
     const backupType = document.getElementById('backupType').value;
+    const backupName = document.getElementById('backupName').value.trim();
+    
+    if (!backupType) {
+        showAdminMessage('Please select a backup type', 'error');
+        return;
+    }
     
     if (!backupName) {
         showAdminMessage('Please enter a backup name', 'error');
@@ -2464,8 +2014,8 @@ async function createBackup() {
     try {
         const formData = new FormData();
         formData.append('action', 'create_backup');
-        formData.append('backup_name', backupName);
         formData.append('backup_type', backupType);
+        formData.append('backup_name', backupName);
         
         const response = await fetch('api/admin-backup.php', {
             method: 'POST',
@@ -2475,14 +2025,14 @@ async function createBackup() {
         const data = await response.json();
         
         if (data.success) {
-            showAdminMessage(data.message, data.has_failures ? 'warning' : 'success');
+            showAdminMessage(data.message, 'success');
             
             // Clear form
             document.getElementById('backupName').value = '';
+            document.getElementById('backupType').value = '';
             
-            // Refresh backup list and stats
-            loadBackupList();
-            loadBackupStats();
+            // Refresh backup list
+            loadBackupData();
         } else {
             showAdminMessage(data.message, 'error');
         }
@@ -3264,3 +2814,217 @@ async function fillAdminDemoAccount() {
         });
     }
 }
+
+// Demo account functions
+function fillDemoAccount() {
+    // Don't auto-fill anymore - let users register properly
+    showMessage('Please fill in your information to create an account', 'info');
+}
+
+// Handle resident registration
+async function handleResidentRegistration(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    formData.append('action', 'register');
+    
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating Account...';
+    
+    try {
+        const response = await fetch('api/auth.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage('Account created successfully! You can now sign in.', 'success');
+            // Switch back to login form
+            showLoginForm();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Registration failed:', error);
+        showMessage('Registration failed. Please try again.', 'error');
+    } finally {
+        // Restore button state
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+}
+
+// Show registration form
+function showRegistrationForm() {
+    const authCard = document.querySelector('.auth-card');
+    if (!authCard) return;
+    
+    authCard.innerHTML = `
+        <div class="auth-header">
+            <div class="auth-logo-icon">🏛️</div>
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Join the E-Barangay Portal</p>
+        </div>
+        
+        <div id="authMessage" class="auth-message" style="display: none;"></div>
+        
+        <form id="registrationForm" class="auth-form" onsubmit="handleResidentRegistration(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="regFirstName">First Name</label>
+                    <div class="input-wrapper">
+                        <div class="input-icon">👤</div>
+                        <input type="text" id="regFirstName" name="first_name" required placeholder="Enter your first name">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="regLastName">Last Name</label>
+                    <div class="input-wrapper">
+                        <div class="input-icon">👤</div>
+                        <input type="text" id="regLastName" name="last_name" required placeholder="Enter your last name">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="regMiddleName">Middle Name (Optional)</label>
+                <div class="input-wrapper">
+                    <div class="input-icon">👤</div>
+                    <input type="text" id="regMiddleName" name="middle_name" placeholder="Enter your middle name">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="regEmail">Email Address</label>
+                <div class="input-wrapper">
+                    <div class="input-icon">📧</div>
+                    <input type="email" id="regEmail" name="email" required placeholder="Enter your email address">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="regPhone">Mobile Number</label>
+                <div class="input-wrapper">
+                    <div class="input-icon">📱</div>
+                    <input type="tel" id="regPhone" name="phone" required placeholder="Enter your mobile number">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="regPassword">Password</label>
+                <div class="input-wrapper">
+                    <div class="input-icon">🔒</div>
+                    <input type="password" id="regPassword" name="password" required placeholder="Create a password" minlength="6">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="regConfirmPassword">Confirm Password</label>
+                <div class="input-wrapper">
+                    <div class="input-icon">🔒</div>
+                    <input type="password" id="regConfirmPassword" name="confirm_password" required placeholder="Confirm your password" minlength="6">
+                </div>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="regBirthDate">Birth Date</label>
+                    <div class="input-wrapper">
+                        <div class="input-icon">📅</div>
+                        <input type="date" id="regBirthDate" name="birth_date">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="regCivilStatus">Civil Status</label>
+                    <div class="input-wrapper">
+                        <div class="input-icon">💍</div>
+                        <select id="regCivilStatus" name="civil_status">
+                            <option value="Single">Single</option>
+                            <option value="Married">Married</option>
+                            <option value="Widowed">Widowed</option>
+                            <option value="Separated">Separated</option>
+                            <option value="Divorced">Divorced</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                Create Account
+            </button>
+        </form>
+        
+        <div class="auth-switch">
+            <p>Already have an account? <a href="#" onclick="showLoginForm()">Sign In</a></p>
+        </div>
+    `;
+    
+    // Add form validation
+    const form = document.getElementById('registrationForm');
+    const password = document.getElementById('regPassword');
+    const confirmPassword = document.getElementById('regConfirmPassword');
+    
+    confirmPassword.addEventListener('input', function() {
+        if (password.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Passwords do not match');
+        } else {
+            confirmPassword.setCustomValidity('');
+        }
+    });
+}
+
+// Show login form
+function showLoginForm() {
+    // Reload the page to show the original login form
+    window.location.reload();
+}
+
+// Utility functions
+function showMessage(message, type) {
+    // Remove existing messages
+    const existingMessages = document.querySelectorAll('.auth-message');
+    existingMessages.forEach(msg => msg.remove());
+    
+    // Create message element
+    const messageEl = document.createElement('div');
+    messageEl.className = `auth-message ${type}`;
+    messageEl.textContent = message;
+    messageEl.style.display = 'block';
+    
+    // Find a container to show the message
+    const container = document.querySelector('.auth-card') || document.body;
+    
+    // Insert at the top
+    container.insertBefore(messageEl, container.firstChild);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (messageEl.parentNode) {
+            messageEl.parentNode.removeChild(messageEl);
+        }
+    }, 5000);
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', function() {
+    checkSession();
+    initializeEventListeners();
+});

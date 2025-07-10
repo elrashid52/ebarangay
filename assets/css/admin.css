@@ -1551,25 +1551,14 @@ body {
     color: #991b1b;
 }
 
-/* Role badges */
-.status-badge.role-super-admin {
+.status-badge.Inactive {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.status-badge.Suspended {
     background: #fef3c7;
     color: #92400e;
-}
-
-.status-badge.role-admin {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.status-badge.role-moderator {
-    background: #e0e7ff;
-    color: #3730a3;
-}
-
-.status-badge.role-staff {
-    background: #ecfdf5;
-    color: #065f46;
 }
 
 /* Role badges */
@@ -1601,6 +1590,27 @@ body {
 }
 
 .role-badge.staff {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+/* Role badges */
+.status-badge.role-super-admin {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.role-admin {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-badge.role-moderator {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.status-badge.role-staff {
     background: #ecfdf5;
     color: #065f46;
 }
@@ -1702,35 +1712,35 @@ body {
 }
 
 .action-btn.edit {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-}
-
-.action-btn.edit:hover {
-    background: #dbeafe;
-    transform: translateY(-1px);
-}
-
-.action-btn.reset {
     background: #fef3c7;
     color: #d97706;
     border: 1px solid #fcd34d;
 }
 
-.action-btn.reset:hover {
+.action-btn.edit:hover {
     background: #fde68a;
     transform: translateY(-1px);
 }
 
+.action-btn.reset {
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+}
+
+.action-btn.reset:hover {
+    background: #c7d2fe;
+    transform: translateY(-1px);
+}
+
 .action-btn.toggle {
-    background: #f0fdf4;
-    color: #059669;
-    border: 1px solid #bbf7d0;
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
 }
 
 .action-btn.toggle:hover {
-    background: #dcfce7;
+    background: #e5e7eb;
     transform: translateY(-1px);
 }
 
@@ -2727,6 +2737,36 @@ body {
     opacity: 0.8;
 }
 
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-item label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detail-item span {
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 500;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .admin-sidebar {
@@ -2806,6 +2846,11 @@ body {
     
     .request-review-actions .admin-btn {
         width: 100%;
+    }
+    
+    .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 }
 
@@ -2964,6 +3009,15 @@ body {
     }
     
     .sidebar-logo {
+        font-size: 1.25rem;
+    }
+    
+    .modal-content {
+        margin: 10px;
+        padding: 20px;
+    }
+    
+    .modal-header h2 {
         font-size: 1.25rem;
     }
 }
