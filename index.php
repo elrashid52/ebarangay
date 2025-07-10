@@ -18,12 +18,14 @@
                 <p class="auth-subtitle">Sign in to your E-Barangay account</p>
             </div>
             
-            <form class="auth-form" id="loginForm">
+            <div id="authMessage" class="auth-message" style="display: none;"></div>
+            
+            <form id="signInForm" class="auth-form">
                 <div class="form-group">
                     <label for="email">Email Address</label>
                     <div class="input-wrapper">
                         <input type="email" id="email" name="email" placeholder="Enter your email" required>
-                        <i class="input-icon">📧</i>
+                        <span class="input-icon">📧</span>
                     </div>
                 </div>
                 
@@ -31,117 +33,34 @@
                     <label for="password">Password</label>
                     <div class="input-wrapper">
                         <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                        <i class="input-icon">🔒</i>
+                        <span class="input-icon">🔒</span>
                     </div>
                 </div>
                 
-                <button type="submit" class="btn btn-primary">Sign In</button>
+                <button type="submit" class="btn btn-primary" id="signInBtn">Sign In</button>
             </form>
             
-             <!-- Demo Accounts - Only show in login mode -->
-                <div class="demo-accounts" id="demoAccounts">
+            <div class="demo-accounts">
                 <div class="demo-title">Demo Accounts</div>
                 <div class="demo-account">
                     <strong>Resident:</strong> john.doe@email.com / password<br>
                     <button type="button" class="btn btn-secondary" 
-                            onclick="fillDemoAccount('john.doe@email.com', '123456')">
+                            onclick="fillDemoAccount('john.doe@email.com', 'password')">
                         Use Resident Demo
                     </button>
                 </div>
                 <div class="demo-account" style="margin-top: 10px;">
-                    <strong>Admin:</strong> admin@barangay.gov.ph / admin123<br>
+                    <strong>Admin:</strong> admin@barangay.gov.ph / password<br>
                     <button type="button" class="btn btn-secondary" 
+                            onclick="fillDemoAccount('admin@barangay.gov.ph', 'password')">
                         Use Admin Demo
                     </button>
                 </div>
-            </div> 
-            
-            <form class="auth-form" id="signupForm" style="display: none;">
-                <div class="form-group">
-                    <label for="signup_first_name">First Name</label>
-                    <input type="text" id="signup_first_name" name="first_name" placeholder="Enter your first name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_last_name">Last Name</label>
-                    <input type="text" id="signup_last_name" name="last_name" placeholder="Enter your last name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_email">Email Address</label>
-                    <input type="email" id="signup_email" name="email" placeholder="Enter your email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_birth_date">Birth Date</label>
-                    <input type="date" id="signup_birth_date" name="birth_date">
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_phone">Phone Number</label>
-                    <input type="tel" id="signup_phone" name="phone" placeholder="Enter your phone number" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_password">Password</label>
-                    <input type="password" id="signup_password" name="password" placeholder="Enter your password" required minlength="6">
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_confirm_password">Confirm Password</label>
-                    <input type="password" id="signup_confirm_password" name="confirm_password" placeholder="Confirm your password" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Sign Up</button>
-            </form>
-
-            <div class="auth-switch">
-                <p id="authSwitchText">Don't have an account? <a href="#" onclick="toggleAuthForm()">Sign up here</a></p>
             </div>
-
-            <!-- Sign Up Form -->
-            <form id="signupForm" class="auth-form" style="display: none;">
-                <div class="form-group">
-                    <label for="signup_first_name">First name</label>
-                    <input type="text" id="signup_first_name" name="first_name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_last_name">Last name</label>
-                    <input type="text" id="signup_last_name" name="last_name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_email">Email</label>
-                    <input type="email" id="signup_email" name="email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_birth_date">Birth date</label>
-                    <input type="date" id="signup_birth_date" name="birth_date">
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_phone">Phone number</label>
-                    <input type="tel" id="signup_phone" name="phone" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_password">Password</label>
-                    <input type="password" id="signup_password" name="password" required minlength="6">
-                </div>
-                
-                <div class="form-group">
-                    <label for="signup_confirm_password">Confirm password</label>
-                    <input type="password" id="signup_confirm_password" name="confirm_password" required minlength="6">
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Sign Up</button>
-                
-                <div class="auth-switch">
-                    <p>Already have an account? <a href="#" id="showLogin">Log in</a></p>
-                </div>
-            </form>
+            
+            <div id="loginSwitch" class="auth-switch">
+                <p>Don't have an account? <a href="#" id="switchToRegister">Sign up here</a></p>
+            </div>
         </div>
         
         <!-- Register Card -->
@@ -151,6 +70,8 @@
                 <h1 class="auth-title">Create Account</h1>
                 <p class="auth-subtitle">Join the E-Barangay community</p>
             </div>
+            
+            <div id="registerMessage" class="auth-message" style="display: none;"></div>
             
             <form id="signUpForm" class="auth-form">
                 <div class="form-grid">
@@ -196,7 +117,7 @@
                     
                     <div class="form-group full-width">
                         <label for="registerPassword">Password</label>
-                        <input type="password" id="registerPassword" name="password" placeholder="Create a password" required>
+                        <input type="password" id="registerPassword" name="password" placeholder="Create a password (min 6 characters)" required minlength="6">
                     </div>
                     
                     <div class="form-group full-width">
@@ -205,102 +126,11 @@
                     </div>
                 </div>
                 
-                <button type="submit" class="btn btn-primary">Create Account</button>
+                <button type="submit" class="btn btn-primary" id="signUpBtn">Create Account</button>
             </form>
             
             <div class="auth-switch">
                 <p>Already have an account? <a href="#" id="switchToLogin">Sign in here</a></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Application Layout (Hidden by default) -->
-    <div class="app-layout" style="display: none;">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">
-                    <div class="sidebar-logo-icon">🏛️</div>
-                    <div>
-                        <div>E-Barangay</div>
-                        <div class="sidebar-subtitle">Resident Portal</div>
-                    </div>
-                </div>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" onclick="showDashboard()">
-                    <span class="nav-icon">📊</span>
-                    Dashboard
-                </a>
-                <a href="#" class="nav-item" onclick="showProfile()">
-                    <span class="nav-icon">👤</span>
-                    My Profile
-                </a>
-                <a href="#" class="nav-item" onclick="showRequestCertificate()">
-                    <span class="nav-icon">📄</span>
-                    Request Certificate
-                </a>
-                <a href="#" class="nav-item" onclick="showMyRequests()">
-                    <span class="nav-icon">📋</span>
-                    My Requests
-                </a>
-                <a href="#" class="nav-item" onclick="logout()">
-                    <span class="nav-icon">🚪</span>
-                    Logout
-                </a>
-            </nav>
-        </div>
-        <div class="main-content">
-            <div class="page-header">
-                <h1 class="page-title">Dashboard</h1>
-                <p class="page-subtitle">Welcome to your E-Barangay portal</p>
-            </div>
-            <div id="main-content-area">
-                <div class="dashboard-grid">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <div class="card-icon total">📊</div>
-                            <div class="card-content">
-                                <h3>Total Requests</h3>
-                                <div class="card-number" id="total-requests">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <div class="card-icon pending">⏳</div>
-                            <div class="card-content">
-                                <h3>Pending</h3>
-                                <div class="card-number" id="pending-requests">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <div class="card-icon approved">✅</div>
-                            <div class="card-content">
-                                <h3>Approved</h3>
-                                <div class="card-number" id="approved-requests">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <div class="card-icon rejected">❌</div>
-                            <div class="card-content">
-                                <h3>Rejected</h3>
-                                <div class="card-number" id="rejected-requests">0</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="recent-requests">
-                    <div class="section-header">
-                        <h2>Recent Requests</h2>
-                    </div>
-                    <div id="recent-requests-content">
-                        <p>Loading recent requests...</p>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -1054,327 +884,6 @@
         </div>
     </div>
 
-    <script>
-        let currentUser = null;
-        let isSignUpMode = false;
-        
-        // Check session on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            checkSession();
-        });
-        
-        // Toggle between login and signup forms
-        function toggleAuthForm() {
-            const loginForm = document.getElementById('loginForm');
-            const signupForm = document.getElementById('signupForm');
-            const authTitle = document.querySelector('.auth-title');
-            const authSubtitle = document.querySelector('.auth-subtitle');
-            const authSwitchText = document.getElementById('authSwitchText');
-            const demoAccounts = document.getElementById('demoAccounts');
-            
-            if (isSignUpMode) {
-                // Switch to login
-                loginForm.style.display = 'block';
-                signupForm.style.display = 'none';
-                authTitle.textContent = 'Welcome Back';
-                authSubtitle.textContent = 'Sign in to your E-Barangay account';
-                authSwitchText.innerHTML = 'Don\'t have an account? <a href="#" onclick="toggleAuthForm()">Sign up here</a>';
-                demoAccounts.style.display = 'block'; // Show demo accounts in login
-                isSignUpMode = false;
-            } else {
-                // Switch to signup
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'block';
-                authTitle.textContent = 'Create Account';
-                authSubtitle.textContent = 'Join the E-Barangay community';
-                authSwitchText.innerHTML = 'Already have an account? <a href="#" onclick="toggleAuthForm()">Sign in here</a>';
-                demoAccounts.style.display = 'none'; // Hide demo accounts in signup
-                isSignUpMode = true;
-            }
-        }
-        
-        // Handle login form submission
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            if (!email || !password) {
-                showMessage('Please fill in all fields', 'error');
-                return;
-            }
-            
-            login(email, password);
-        });
-        
-        // Handle signup form submission
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const password = formData.get('password');
-            const confirmPassword = formData.get('confirm_password');
-            
-            // Validate passwords match
-            if (password !== confirmPassword) {
-                showMessage('Passwords do not match', 'error');
-                return;
-            }
-            
-            // Validate password length
-            if (password.length < 6) {
-                showMessage('Password must be at least 6 characters long', 'error');
-                return;
-            }
-            
-            register(formData);
-        });
-        
-        // Register function
-        function register(formData) {
-            formData.append('action', 'register');
-            
-            fetch('api/auth.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showMessage('Registration successful! Please sign in with your new account.', 'success');
-                    // Reset form and switch to login
-                    document.getElementById('signupForm').reset();
-                    setTimeout(() => {
-                        toggleAuthForm();
-                    }, 2000);
-                } else {
-                    showMessage(data.message || 'Registration failed', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Registration error:', error);
-                showMessage('Registration failed. Please try again.', 'error');
-            });
-        }
-        
-        // Login function
-        function login(email, password) {
-            const formData = new FormData();
-            formData.append('action', 'login');
-            formData.append('email', email);
-            formData.append('password', password);
-            
-            fetch('api/auth.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    currentUser = data.user;
-                    showMessage('Login successful!', 'success');
-                    
-                    // Redirect based on user type
-                    setTimeout(() => {
-                        if (data.redirect === 'admin' || (data.user && data.user.type === 'admin')) {
-                            window.location.href = 'admin.php';
-                        } else if (data.redirect === 'resident' || (data.user && data.user.type === 'resident')) {
-                            // Redirect to resident dashboard
-                            showResidentDashboard();
-                        } else {
-                            // Fallback - show resident dashboard for any other successful login
-                            showResidentDashboard();
-                        }
-                    }, 1000);
-                } else {
-                    showMessage(data.message || 'Login failed', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Login error:', error);
-                showMessage('Login failed. Please try again.', 'error');
-            });
-        }
-        
-        // Use demo account
-        function useDemoAccount(type) {
-            if (type === 'resident') {
-                document.getElementById('email').value = 'john.doe@email.com';
-                document.getElementById('password').value = 'password';
-            } else if (type === 'admin') {
-                document.getElementById('email').value = 'admin@barangay.gov.ph';
-                document.getElementById('password').value = 'password';
-            }
-        }
-        
-        // Toggle between login and signup forms
-        document.getElementById('showSignup').addEventListener('click', function(e) {
-            e.preventDefault();
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('signupForm').style.display = 'block';
-            document.querySelector('.auth-title').textContent = 'Sign up';
-            document.querySelector('.auth-subtitle').textContent = 'Create your account to access barangay services';
-        });
-        
-        document.getElementById('showLogin').addEventListener('click', function(e) {
-            e.preventDefault();
-            document.getElementById('signupForm').style.display = 'none';
-            document.getElementById('loginForm').style.display = 'block';
-            document.querySelector('.auth-title').textContent = 'Welcome back';
-            document.querySelector('.auth-subtitle').textContent = 'Sign in to your account to continue';
-        });
-        
-        // Handle signup form submission
-        document.getElementById('signupForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const password = formData.get('password');
-            const confirmPassword = formData.get('confirm_password');
-            
-            // Validate password confirmation
-            if (password !== confirmPassword) {
-                showMessage('Passwords do not match', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch('api/auth.php', {
-                    method: 'POST',
-                    body: new URLSearchParams({
-                        action: 'register',
-                        first_name: formData.get('first_name'),
-                        last_name: formData.get('last_name'),
-                        email: formData.get('email'),
-                        phone: formData.get('phone'),
-                        birth_date: formData.get('birth_date'),
-                        password: password
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage('Account created successfully! Please log in.', 'success');
-                    // Switch back to login form
-                    document.getElementById('showLogin').click();
-                    // Clear signup form
-                    document.getElementById('signupForm').reset();
-                } else {
-                    showMessage(data.message || 'Registration failed', 'error');
-                }
-            } catch (error) {
-                console.error('Signup error:', error);
-                showMessage('An error occurred during registration', 'error');
-            }
-        });
-        
-        // Handle login form submission
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            try {
-                const response = await fetch('api/auth.php', {
-                    method: 'POST',
-                    body: new URLSearchParams({
-                        action: 'login',
-                        email: formData.get('email'),
-                        password: formData.get('password')
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    currentUser = data.user;
-                    showApp();
-                    loadDashboard();
-                } else {
-                    showMessage(data.message || 'Login failed', 'error');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showMessage('An error occurred during login', 'error');
-            }
-        });
-        
-        // Check if user is already logged in
-        checkSession();
-        
-        async function checkSession() {
-            try {
-                const response = await fetch('api/auth.php?action=check_session');
-                const data = await response.json();
-                
-                if (data.success && data.user) {
-                    currentUser = data.user;
-                    showApp();
-                    loadDashboard();
-                } else {
-                    showAuth();
-                }
-            } catch (error) {
-                console.error('Session check error:', error);
-                showMessage(data.message || 'Session check failed', 'error');
-            }
-        }
-        
-        // Demo account functions
-        function useResidentDemo() {
-            document.getElementById('email').value = 'john.doe@email.com';
-            document.getElementById('password').value = 'password';
-            // Automatically submit the form
-            handleLogin();
-        }
-        
-        function useAdminDemo() {
-            document.getElementById('email').value = 'admin@barangay.gov.ph';
-            document.getElementById('password').value = 'password';
-            // Automatically submit the form
-            handleLogin();
-        }
-        
-        function useStaffDemo() {
-            const email = 'staff@barangay.gov.ph';
-            const password = 'password';
-            
-            document.getElementById('email').value = email;
-            document.getElementById('password').value = password;
-            
-            // Automatically submit the login form
-            login();
-        }
-        
-        function showMessage(message, type) {
-            // Remove existing messages
-            const existingMessage = document.querySelector('.auth-message');
-            if (existingMessage) {
-                existingMessage.remove();
-            }
-            
-            // Create new message
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `auth-message ${type}`;
-            messageDiv.textContent = message;
-            
-            // Insert message before the active form
-            const activeForm = document.getElementById('loginForm').style.display !== 'none' ? 
-                document.getElementById('loginForm') : document.getElementById('signupForm');
-            activeForm.parentNode.insertBefore(messageDiv, activeForm);
-            
-            // Auto-remove success messages after 5 seconds
-            if (type === 'success') {
-                setTimeout(() => {
-                    if (messageDiv.parentNode) {
-                        messageDiv.remove();
-                    }
-                }, 5000);
-            }
-        }
-    </script>
     <script src="assets/js/app.js"></script>
 </body>
 </html>
