@@ -419,6 +419,7 @@ function createDatabaseBackup($db, $backupFile) {
     try {
         set_time_limit(300); // 5 minutes
         
+        // Get all tables in the correct order (respecting foreign key dependencies)
         $tables = [];
         $result = $db->query("SHOW TABLES");
         while ($row = $result->fetch(PDO::FETCH_NUM)) {
@@ -429,15 +430,21 @@ function createDatabaseBackup($db, $backupFile) {
             throw new Exception('No tables found in database');
         }
         
+        // Sort tables to handle dependencies properly
+        // Put tables with no foreign keys first, then dependent tables
+        $sortedTables = sortTablesByDependencies($db, $tables);
+        
         $sql = "-- E-Barangay Portal Database Backup\n";
         $sql .= "-- Generated on: " . date('Y-m-d H:i:s') . "\n";
-        $sql .= "-- Tables: " . implode(', ', $tables) . "\n\n";
+        $sql .= "-- Tables: " . implode(', ', $sortedTables) . "\n\n";
         $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n";
         $sql .= "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n";
         $sql .= "SET AUTOCOMMIT = 0;\n";
         $sql .= "START TRANSACTION;\n\n";
         
-        foreach ($tables as $table) {
+        $totalRows = 0;
+        
+        foreach ($sortedTables as $table) {
             try {
                 // Get table structure
                 $result = $db->query("SHOW CREATE TABLE `$table`");
@@ -448,10 +455,21 @@ function createDatabaseBackup($db, $backupFile) {
                 
                 // Get table data
                 $result = $db->query("SELECT * FROM `$table`");
+                $rowCount = $result->rowCount();
+                
                 if ($result->rowCount() > 0) {
                     $sql .= "-- Dumping data for table `$table`\n";
-                    $sql .= "LOCK TABLES `$table` WRITE;\n";
-                    $sql .= "INSERT INTO `$table` VALUES\n";
+                    $sql .= "-- $rowCount rows\n";
+                    
+                    // Get column names for INSERT statement
+                    $columns = [];
+                    $columnResult = $db->query("SHOW COLUMNS FROM `$table`");
+                    while ($col = $columnResult->fetch(PDO::FETCH_ASSOC)) {
+                        $columns[] = '`' . $col['Field'] . '`';
+                    }
+                    
+                    $sql .= "INSERT INTO `$table` (" . implode(', ', $columns) . ") VALUES\n";
+                    
                     $rows = [];
                     while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                         $values = array_map(function($value) use ($db) {
@@ -460,7 +478,9 @@ function createDatabaseBackup($db, $backupFile) {
                         $rows[] = '(' . implode(', ', $values) . ')';
                     }
                     $sql .= implode(",\n", $rows) . ";\n";
-                    $sql .= "UNLOCK TABLES;\n\n";
+                    $totalRows += $rowCount;
+                } else {
+                    $sql .= "-- No data for table `$table`\n\n";
                 }
             } catch (Exception $e) {
                 error_log("Error backing up table $table: " . $e->getMessage());
@@ -470,7 +490,9 @@ function createDatabaseBackup($db, $backupFile) {
         
         $sql .= "COMMIT;\n";
         $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+        $sql .= "SET AUTOCOMMIT = 1;\n";
         $sql .= "-- Backup completed on: " . date('Y-m-d H:i:s') . "\n";
+        $sql .= "-- Total rows backed up: $totalRows\n";
         
         $bytesWritten = file_put_contents($backupFile, $sql);
         
@@ -483,13 +505,43 @@ function createDatabaseBackup($db, $backupFile) {
             'message' => 'Database backup created successfully',
             'file' => basename($backupFile),
             'size' => filesize($backupFile),
-            'tables_count' => count($tables)
+            'tables_count' => count($sortedTables),
+            'total_rows' => $totalRows
         ];
         
     } catch (Exception $e) {
         error_log("Database backup error: " . $e->getMessage());
         return ['success' => false, 'message' => 'Database backup failed: ' . $e->getMessage()];
     }
+}
+
+function sortTablesByDependencies($db, $tables) {
+    // Simple dependency sorting - put tables with no foreign keys first
+    $independent = [];
+    $dependent = [];
+    
+    foreach ($tables as $table) {
+        try {
+            // Check if table has foreign keys
+            $result = $db->query("SELECT COUNT(*) as fk_count FROM information_schema.KEY_COLUMN_USAGE 
+                                 WHERE TABLE_SCHEMA = DATABASE() 
+                                 AND TABLE_NAME = '$table' 
+                                 AND REFERENCED_TABLE_NAME IS NOT NULL");
+            $row = $result->fetch(PDO::FETCH_ASSOC);
+            
+            if ($row['fk_count'] > 0) {
+                $dependent[] = $table;
+            } else {
+                $independent[] = $table;
+            }
+        } catch (Exception $e) {
+            // If we can't determine dependencies, put it in independent
+            $independent[] = $table;
+        }
+    }
+    
+    // Return independent tables first, then dependent ones
+    return array_merge($independent, $dependent);
 }
 
 function createFilesBackupAlternative($backupDir) {
@@ -605,50 +657,89 @@ function restoreDatabaseBackup($db, $backupFile) {
             throw new Exception('Failed to read backup file');
         }
         
-        // Split SQL into individual statements
-        $statements = array_filter(array_map('trim', preg_split('/;\s*\n/', $sql)));
+        // Disable foreign key checks and autocommit for proper restoration
+        $db->exec("SET FOREIGN_KEY_CHECKS = 0");
+        $db->exec("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'");
+        $db->exec("SET AUTOCOMMIT = 0");
         
         $db->beginTransaction();
+        
+        // Split SQL into individual statements - improved parsing
+        $statements = [];
+        $currentStatement = '';
+        $lines = explode("\n", $sql);
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            // Skip comments and empty lines
+            if (empty($line) || preg_match('/^--/', $line) || preg_match('/^\/\*/', $line)) {
+                continue;
+            }
+            
+            $currentStatement .= $line . "\n";
+            
+            // Check if statement is complete (ends with semicolon)
+            if (preg_match('/;\s*$/', $line)) {
+                $statements[] = trim($currentStatement);
+                $currentStatement = '';
+            }
+        }
         
         $executedStatements = 0;
         $errors = [];
         
         foreach ($statements as $statement) {
-            if (!empty($statement) && 
-                !preg_match('/^--/', $statement) && 
-                !preg_match('/^\/\*/', $statement) &&
-                !preg_match('/^SET/', $statement) &&
-                !preg_match('/^START TRANSACTION/', $statement) &&
-                !preg_match('/^COMMIT/', $statement)) {
+            if (!empty($statement)) {
+                // Skip certain control statements that we handle separately
+                if (preg_match('/^(SET|START TRANSACTION|COMMIT|LOCK TABLES|UNLOCK TABLES)/i', $statement)) {
+                    continue;
+                }
                 
                 try {
                     $db->exec($statement);
                     $executedStatements++;
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
-                    error_log("Error executing SQL statement: " . $e->getMessage());
+                    $errors[] = "Statement error: " . $e->getMessage();
+                    error_log("Error executing SQL statement: " . $statement . " - " . $e->getMessage());
+                    // Continue with other statements even if one fails
                 }
             }
         }
         
         $db->commit();
         
+        // Re-enable foreign key checks
+        $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+        $db->exec("SET AUTOCOMMIT = 1");
+        
         $message = "Database restored successfully ($executedStatements statements executed)";
         if (!empty($errors)) {
-            $message .= ". Some errors occurred but restore completed.";
+            $message .= ". " . count($errors) . " errors occurred but restore completed.";
+            error_log("Restore errors: " . implode("; ", $errors));
         }
         
         return [
             'success' => true, 
             'message' => $message,
             'statements_executed' => $executedStatements,
-            'errors_count' => count($errors)
+            'errors_count' => count($errors),
+            'errors' => $errors
         ];
         
     } catch (Exception $e) {
         if ($db->inTransaction()) {
             $db->rollBack();
         }
+        
+        // Try to re-enable foreign key checks even on failure
+        try {
+            $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+            $db->exec("SET AUTOCOMMIT = 1");
+        } catch (Exception $cleanupError) {
+            error_log("Cleanup error: " . $cleanupError->getMessage());
+        }
+        
         error_log("Database restore error: " . $e->getMessage());
         return ['success' => false, 'message' => 'Database restore failed: ' . $e->getMessage()];
     }
