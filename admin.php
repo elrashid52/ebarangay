@@ -45,7 +45,7 @@
                 </a>
                 <a href="#" class="admin-nav-item" data-admin-page="users">
                     <div class="admin-nav-icon">👤</div>
-                    Admin Users
+                    Backup & Restore
                 </a>
                 <a href="#" class="admin-nav-item" data-admin-page="backup">
                     <div class="admin-nav-icon">💾</div>
