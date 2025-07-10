@@ -1229,25 +1229,17 @@
         
         // Demo account functions
         function useResidentDemo() {
-            const email = 'john.doe@email.com';
-            const password = 'password';
-            
-            document.getElementById('email').value = email;
-            document.getElementById('password').value = password;
-            
-            // Automatically submit the login form
-            login();
+            document.getElementById('email').value = 'john.doe@email.com';
+            document.getElementById('password').value = 'password';
+            // Automatically submit the form
+            handleLogin();
         }
         
         function useAdminDemo() {
-            const email = 'admin@barangay.gov.ph';
-            const password = 'password';
-            
-            document.getElementById('email').value = email;
-            document.getElementById('password').value = password;
-            
-            // Automatically submit the login form
-            login();
+            document.getElementById('email').value = 'admin@barangay.gov.ph';
+            document.getElementById('password').value = 'password';
+            // Automatically submit the form
+            handleLogin();
         }
         
         function useStaffDemo() {

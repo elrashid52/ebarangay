@@ -91,7 +91,7 @@ switch($action) {
         // CRITICAL: Check for admin credentials FIRST
         
         // Method 1: Demo admin (ALWAYS WORKS)
-        if($email === 'admin@barangay.gov.ph' && ($password === 'password' || $password === 'admin123')) {
+        if($email === 'admin@barangay.gov.ph' && $password === 'password') {
             error_log("Demo admin login successful");
             $_SESSION['user_id'] = 999;
             $_SESSION['user_email'] = 'admin@barangay.gov.ph';
@@ -139,7 +139,7 @@ switch($action) {
                     // Check password (multiple methods)
                     $passwordMatch = false;
                     
-                    if($admin['password'] === $password || $password === 'password' || $password === 'admin123' || password_verify($password, $admin['password'])) {
+                    if($admin['password'] === $password || $password === 'password' || password_verify($password, $admin['password'])) {
                         $passwordMatch = true;
                         error_log("Admin password matched");
                     }
@@ -194,7 +194,7 @@ switch($action) {
                 error_log("Found admin in residents table");
                 
                 // Check password
-                if($password === 'password' || $password === 'admin123' || $admin['password'] === $password || password_verify($password, $admin['password'])) {
+                if($password === 'password' || $admin['password'] === $password || password_verify($password, $admin['password'])) {
                     // Set admin session
                     $_SESSION['user_id'] = $admin['id'];
                     $_SESSION['user_email'] = $admin['email'];
@@ -254,7 +254,7 @@ switch($action) {
                 } elseif($residentData['password'] === $password) {
                     $passwordMatch = true;
                     error_log("Password matched with direct comparison");
-                } elseif($password === 'resident123' || $password === 'password') {
+                } elseif($password === 'resident123') {
                     $passwordMatch = true;
                     error_log("Universal password accepted");
                 }
