@@ -3,17 +3,81 @@ let currentUser = null;
 let currentStep = 1;
 let selectedCertificateType = null;
 let uploadedDocuments = {};
+let isRegistering = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     checkSession();
     initializeEventListeners();
+    initializeAuthSwitching();
     
     // Log page load activity for residents
     if (window.location.pathname.includes('index.php') || window.location.pathname.endsWith('/')) {
         logUserActivity('page_load', 'system', null, 'Resident portal accessed');
     }
 });
+
+// Initialize authentication form switching
+function initializeAuthSwitching() {
+    const switchToRegister = document.getElementById('switchToRegister');
+    const switchToLogin = document.getElementById('switchToLogin');
+    const loginCard = document.getElementById('loginCard');
+    const registerCard = document.getElementById('registerCard');
+    
+    if (switchToRegister) {
+        switchToRegister.addEventListener('click', function(e) {
+            e.preventDefault();
+            showRegisterForm();
+        });
+    }
+    
+    if (switchToLogin) {
+        switchToLogin.addEventListener('click', function(e) {
+            e.preventDefault();
+            showLoginForm();
+        });
+    }
+}
+
+// Show register form
+function showRegisterForm() {
+    const loginCard = document.getElementById('loginCard');
+    const registerCard = document.getElementById('registerCard');
+    
+    if (loginCard && registerCard) {
+        loginCard.style.display = 'none';
+        registerCard.style.display = 'block';
+        clearAuthMessages();
+    }
+}
+
+// Show login form
+function showLoginForm() {
+    const loginCard = document.getElementById('loginCard');
+    const registerCard = document.getElementById('registerCard');
+    
+    if (loginCard && registerCard) {
+        registerCard.style.display = 'none';
+        loginCard.style.display = 'block';
+        clearAuthMessages();
+    }
+}
+
+// Clear authentication messages
+function clearAuthMessages() {
+    const authMessage = document.getElementById('authMessage');
+    const registerMessage = document.getElementById('registerMessage');
+    
+    if (authMessage) {
+        authMessage.style.display = 'none';
+        authMessage.textContent = '';
+    }
+    
+    if (registerMessage) {
+        registerMessage.style.display = 'none';
+        registerMessage.textContent = '';
+    }
+}
 
 // User activity logging function
 async function logUserActivity(action, targetType = null, targetId = null, details = '') {
@@ -371,6 +435,105 @@ function initializeEventListeners() {
     }
 }
 
+// Handle sign up
+async function handleSignUp(e) {
+    e.preventDefault();
+    
+    if (isRegistering) return;
+    
+    console.log('Sign up form submitted');
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    // Get form values
+    const password = formData.get('password');
+    const confirmPassword = formData.get('confirm_password');
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+        showAuthMessage('Passwords do not match', 'error', 'register');
+        return;
+    }
+    
+    // Validate password length
+    if (password.length < 6) {
+        showAuthMessage('Password must be at least 6 characters long', 'error', 'register');
+        return;
+    }
+    
+    // Validate required fields
+    const requiredFields = ['first_name', 'last_name', 'email', 'phone', 'password'];
+    for (const field of requiredFields) {
+        if (!formData.get(field) || formData.get(field).trim() === '') {
+            showAuthMessage(`${field.replace('_', ' ')} is required`, 'error', 'register');
+            return;
+        }
+    }
+    
+    isRegistering = true;
+    const submitBtn = document.getElementById('signUpBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Creating Account...';
+    submitBtn.disabled = true;
+    
+    try {
+        // Add action to form data
+        formData.append('action', 'register');
+        
+        console.log('Sending registration request...');
+        const response = await fetch('api/auth.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        console.log('Registration response:', data);
+        
+        if (data.success) {
+            showAuthMessage('Account created successfully! You can now sign in.', 'success', 'register');
+            
+            // Clear form
+            form.reset();
+            
+            // Switch to login form after 2 seconds
+            setTimeout(() => {
+                showLoginForm();
+                showAuthMessage('Account created successfully! Please sign in with your credentials.', 'success', 'login');
+            }, 2000);
+        } else {
+            showAuthMessage(data.message || 'Registration failed. Please try again.', 'error', 'register');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        showAuthMessage('Network error. Please check your connection and try again.', 'error', 'register');
+    } finally {
+        isRegistering = false;
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Show authentication message
+function showAuthMessage(message, type = 'info', form = 'login') {
+    const messageElement = form === 'register' ? 
+        document.getElementById('registerMessage') : 
+        document.getElementById('authMessage');
+    
+    if (messageElement) {
+        messageElement.textContent = message;
+        messageElement.className = `auth-message ${type}`;
+        messageElement.style.display = 'block';
+        
+        // Auto-hide success messages after 5 seconds
+        if (type === 'success') {
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 5000);
+        }
+    }
+}
+
 // Authentication functions
 async function handleSignIn(e) {
     e.preventDefault();
@@ -400,7 +563,7 @@ async function handleSignIn(e) {
         if (data.success) {
             currentUser = data.user;
             console.log('Login successful for user:', currentUser);
-            showMessage('Login successful!', 'success');
+            showAuthMessage('Login successful! Redirecting...', 'success', 'login');
             
             // CRITICAL: Handle redirect based on user type
             if (data.redirect === 'admin' || currentUser.type === 'admin') {
@@ -421,11 +584,11 @@ async function handleSignIn(e) {
                 showDashboard();
             }
         } else {
-            showMessage(data.message, 'error');
+            showAuthMessage(data.message || 'Login failed. Please try again.', 'error', 'login');
         }
     } catch (error) {
         console.error('Login failed:', error);
-        showMessage('Login failed. Please try again.', 'error');
+        showAuthMessage('Network error. Please check your connection and try again.', 'error', 'login');
     } finally {
         // Restore button state
         submitBtn.disabled = false;
@@ -1947,6 +2110,11 @@ if (window.location.search.includes('debug=1')) {
 
 // Demo account function for residents
 async function fillDemoAccount(email, password) {
+    console.log('Filling demo account:', email);
+    
+    // Make sure we're on the login form
+    showLoginForm();
+    
     const emailField = document.getElementById('email') || document.getElementById('loginEmail');
     const passwordField = document.getElementById('password') || document.getElementById('loginPassword');
     
