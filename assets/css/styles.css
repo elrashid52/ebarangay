@@ -594,49 +594,6 @@ body {
     gap: 8px;
 }
 
-.form-group small {
-    display: block;
-    margin-top: 4px;
-    font-size: 0.75rem;
-    color: #6b7280;
-}
-
-.form-group.full-width {
-    grid-column: 1 / -1;
-}
-
-/* Registration form specific styles */
-.auth-card {
-    max-width: 480px;
-}
-
-.auth-card.registration {
-    max-width: 800px;
-}
-
-/* Form validation styles */
-.form-group input:invalid,
-.form-group select:invalid,
-.form-group textarea:invalid {
-    border-color: #ef4444;
-}
-
-.form-group input:valid,
-.form-group select:valid,
-.form-group textarea:valid {
-    border-color: #10b981;
-}
-
-/* Required field indicator */
-.form-group label::after {
-    content: '';
-}
-
-.form-group label[for*="reg"]:not([for*="Middle"]):not([for*="Landline"]):not([for*="ZipCode"]):not([for*="Occupation"]):not([for*="PlaceOfWork"]):not([for*="MonthlyIncomeRange"]):not([for*="EmergencyContactAddress"])::after {
-    content: ' *';
-    color: #ef4444;
-}
-
 .form-actions {
     display: flex;
     gap: 15px;
