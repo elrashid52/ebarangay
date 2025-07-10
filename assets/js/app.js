@@ -1711,15 +1711,12 @@ function filterRequests() {
     rows.forEach(row => {
         if (!filter) {
             row.style.display = '';
-            if (data.redirect === 'admin' || (data.user && data.user.type === 'admin')) {
+        } else {
             const statusBadge = row.querySelector('.status-badge');
             if (statusBadge && statusBadge.classList.contains(filter)) {
                 row.style.display = '';
-            } else if (data.redirect === 'resident' || (data.user && data.user.type === 'resident')) {
-                row.style.display = 'none';
             } else {
-                console.error('Unknown redirect type:', data.redirect);
-                showMessage('Login successful but redirect failed', 'error');
+                row.style.display = 'none';
             }
         }
     });
@@ -1838,4 +1835,33 @@ async function fillDemoAccount(email, password) {
             target: loginForm
         });
     }
+}
+
+// Demo account functions
+function useResidentDemo() {
+    console.log('Using resident demo account');
+    document.getElementById('email').value = 'john.doe@email.com';
+    document.getElementById('password').value = 'password';
+    
+    // Auto-submit the form
+    setTimeout(() => {
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            handleLogin({ preventDefault: () => {} });
+        }
+    }, 100);
+}
+
+function useAdminDemo() {
+    console.log('Using admin demo account');
+    document.getElementById('email').value = 'admin@barangay.gov.ph';
+    document.getElementById('password').value = 'password';
+    
+    // Auto-submit the form
+    setTimeout(() => {
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            handleLogin({ preventDefault: () => {} });
+        }
+    }, 100);
 }
