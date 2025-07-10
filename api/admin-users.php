@@ -18,6 +18,25 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 switch($action) {
     case 'get_all':
         try {
+            // First, ensure the admin_users table exists
+            $createTableQuery = "CREATE TABLE IF NOT EXISTS admin_users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                role ENUM('Super Admin', 'Admin', 'Moderator', 'Staff') DEFAULT 'Admin',
+                status ENUM('Active', 'Inactive', 'Suspended') DEFAULT 'Active',
+                last_login TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                created_by INT,
+                INDEX idx_email (email),
+                INDEX idx_role (role),
+                INDEX idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+            $db->exec($createTableQuery);
+            
             $search = $_GET['search'] ?? '';
             $roleFilter = $_GET['role_filter'] ?? '';
             $statusFilter = $_GET['status_filter'] ?? '';
@@ -126,6 +145,25 @@ switch($action) {
         break;
         
     case 'add':
+        // Ensure table exists before adding
+        $createTableQuery = "CREATE TABLE IF NOT EXISTS admin_users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            first_name VARCHAR(100) NOT NULL,
+            last_name VARCHAR(100) NOT NULL,
+            role ENUM('Super Admin', 'Admin', 'Moderator', 'Staff') DEFAULT 'Admin',
+            status ENUM('Active', 'Inactive', 'Suspended') DEFAULT 'Active',
+            last_login TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_by INT,
+            INDEX idx_email (email),
+            INDEX idx_role (role),
+            INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        $db->exec($createTableQuery);
+        
         $first_name = trim($_POST['first_name'] ?? '');
         $last_name = trim($_POST['last_name'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -146,13 +184,16 @@ switch($action) {
         
         try {
             // Check if email already exists
-            $checkQuery = "SELECT id FROM admin_users WHERE email = :email";
+            $checkQuery = "SELECT id FROM admin_users WHERE email = :email 
+                          UNION 
+                          SELECT id FROM residents WHERE email = :email2";
             $checkStmt = $db->prepare($checkQuery);
             $checkStmt->bindParam(':email', $email);
+            $checkStmt->bindParam(':email2', $email);
             $checkStmt->execute();
             
             if($checkStmt->rowCount() > 0) {
-                echo json_encode(['success' => false, 'message' => 'Email already exists']);
+                echo json_encode(['success' => false, 'message' => 'Email already exists in the system']);
                 exit;
             }
             
@@ -174,6 +215,22 @@ switch($action) {
             
             if($stmt->execute()) {
                 $newUserId = $db->lastInsertId();
+                
+                // Also add to residents table with admin role for unified login
+                try {
+                    $residentQuery = "INSERT INTO residents (email, password, first_name, last_name, role, status) 
+                                     VALUES (:email, :password, :first_name, :last_name, :role, 'Active')";
+                    $residentStmt = $db->prepare($residentQuery);
+                    $residentStmt->bindParam(':email', $email);
+                    $residentStmt->bindParam(':password', $hashedPassword);
+                    $residentStmt->bindParam(':first_name', $first_name);
+                    $residentStmt->bindParam(':last_name', $last_name);
+                    $residentStmt->bindParam(':role', $role);
+                    $residentStmt->execute();
+                } catch (Exception $e) {
+                    // If residents insert fails, it's okay - admin_users table is primary
+                    error_log("Failed to add to residents table: " . $e->getMessage());
+                }
                 
                 // Log activity
                 logAdminActivity($_SESSION['admin_id'], 'create_admin_user', 'admin_user', $newUserId, "Created new admin user: $first_name $last_name ($role)");
@@ -406,6 +463,64 @@ switch($action) {
             echo json_encode(['success' => true, 'statistics' => $stats]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => 'Error fetching statistics: ' . $e->getMessage()]);
+        }
+        break;
+        
+    case 'seed_demo_data':
+        try {
+            // Create table if it doesn't exist
+            $createTableQuery = "CREATE TABLE IF NOT EXISTS admin_users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                role ENUM('Super Admin', 'Admin', 'Moderator', 'Staff') DEFAULT 'Admin',
+                status ENUM('Active', 'Inactive', 'Suspended') DEFAULT 'Active',
+                last_login TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                created_by INT,
+                INDEX idx_email (email),
+                INDEX idx_role (role),
+                INDEX idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+            $db->exec($createTableQuery);
+            
+            // Check if demo data already exists
+            $checkQuery = "SELECT COUNT(*) as count FROM admin_users";
+            $checkStmt = $db->prepare($checkQuery);
+            $checkStmt->execute();
+            $count = $checkStmt->fetch(PDO::FETCH_ASSOC)['count'];
+            
+            if ($count == 0) {
+                // Insert demo admin users
+                $hashedPassword = password_hash('password', PASSWORD_DEFAULT);
+                
+                $demoUsers = [
+                    ['admin@barangay.gov.ph', 'Demo', 'Admin', 'Super Admin'],
+                    ['moderator@barangay.gov.ph', 'Demo', 'Moderator', 'Moderator'],
+                    ['staff@barangay.gov.ph', 'Demo', 'Staff', 'Staff']
+                ];
+                
+                foreach ($demoUsers as $user) {
+                    $insertQuery = "INSERT INTO admin_users (email, password, first_name, last_name, role, status, created_by) 
+                                   VALUES (:email, :password, :first_name, :last_name, :role, 'Active', 1)";
+                    $insertStmt = $db->prepare($insertQuery);
+                    $insertStmt->bindParam(':email', $user[0]);
+                    $insertStmt->bindParam(':password', $hashedPassword);
+                    $insertStmt->bindParam(':first_name', $user[1]);
+                    $insertStmt->bindParam(':last_name', $user[2]);
+                    $insertStmt->bindParam(':role', $user[3]);
+                    $insertStmt->execute();
+                }
+                
+                echo json_encode(['success' => true, 'message' => 'Demo data seeded successfully']);
+            } else {
+                echo json_encode(['success' => true, 'message' => 'Demo data already exists']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error seeding demo data: ' . $e->getMessage()]);
         }
         break;
         
