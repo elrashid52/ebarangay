@@ -38,7 +38,8 @@
                 <button type="submit" class="btn btn-primary">Sign In</button>
             </form>
             
-             <div class="demo-accounts">
+             <!-- Demo Accounts - Only show in login mode -->
+                <div class="demo-accounts" id="demoAccounts">
                 <div class="demo-title">Demo Accounts</div>
                 <div class="demo-account">
                     <strong>Resident:</strong> john.doe@email.com / 123456<br>
@@ -979,6 +980,7 @@
             const authTitle = document.querySelector('.auth-title');
             const authSubtitle = document.querySelector('.auth-subtitle');
             const authSwitchText = document.getElementById('authSwitchText');
+            const demoAccounts = document.getElementById('demoAccounts');
             
             if (isSignUpMode) {
                 // Switch to login
@@ -987,6 +989,7 @@
                 authTitle.textContent = 'Welcome Back';
                 authSubtitle.textContent = 'Sign in to your E-Barangay account';
                 authSwitchText.innerHTML = 'Don\'t have an account? <a href="#" onclick="toggleAuthForm()">Sign up here</a>';
+                demoAccounts.style.display = 'block'; // Show demo accounts in login
                 isSignUpMode = false;
             } else {
                 // Switch to signup
@@ -995,6 +998,7 @@
                 authTitle.textContent = 'Create Account';
                 authSubtitle.textContent = 'Join the E-Barangay community';
                 authSwitchText.innerHTML = 'Already have an account? <a href="#" onclick="toggleAuthForm()">Sign in here</a>';
+                demoAccounts.style.display = 'none'; // Hide demo accounts in signup
                 isSignUpMode = true;
             }
         }
