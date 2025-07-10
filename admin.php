@@ -539,6 +539,13 @@
                 </div>
             </div>
 
+            <!-- Backup & Restore Page -->
+            <div id="backupPage" class="admin-page" style="display: none;">
+                <div class="admin-page-header">
+                    <h1 class="admin-page-title">💾 Backup & Restore</h1>
+                    <p class="admin-page-subtitle">Secure your system data with automated backup and restore capabilities</p>
+                </div>
+                
                 <!-- Backup Statistics -->
                 <div class="admin-dashboard-grid" style="margin-bottom: 30px;">
                     <div class="admin-dashboard-card">
