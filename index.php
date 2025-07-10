@@ -1086,10 +1086,14 @@
                     
                     // Redirect based on user type
                     setTimeout(() => {
-                        if (data.redirect === 'admin') {
+                        if (data.redirect === 'admin' || (data.user && data.user.type === 'admin')) {
                             window.location.href = 'admin.php';
+                        } else if (data.redirect === 'resident' || (data.user && data.user.type === 'resident')) {
+                            // Redirect to resident dashboard
+                            showResidentDashboard();
                         } else {
-                            showDashboard();
+                            // Fallback - show resident dashboard for any other successful login
+                            showResidentDashboard();
                         }
                     }, 1000);
                 } else {
