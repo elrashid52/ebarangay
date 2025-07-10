@@ -1640,8 +1640,8 @@ function clearActivityFilters() {
 
 // Admin Users Management
 async function loadAdminUsersData() {
-    // First, try to seed demo data if table is empty
     try {
+        // First seed demo data if needed
         await fetch('api/admin-users.php', {
             method: 'POST',
             headers: {
@@ -1649,26 +1649,42 @@ async function loadAdminUsersData() {
             },
             body: 'action=seed_demo_data'
         });
-    } catch (error) {
-        console.log('Demo data seeding skipped:', error);
-    }
-    
-    try {
+        
+        // Then load the data
         const response = await fetch('api/admin-users.php?action=get_all');
         const data = await response.json();
         
         if (data.success) {
             displayAdminUsersTable(data.users);
-            updateAdminUsersStats(data);
         } else {
             console.error('Failed to load admin users:', data.message);
-            // Show empty state instead of error
-            displayAdminUsersTable([]);
+            // Show empty state with error message
+            const tbody = document.getElementById('adminUsersTableBody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #ef4444; padding: 40px;">
+                            <div style="font-size: 1.2rem; margin-bottom: 10px;">⚠️ Error Loading Admin Users</div>
+                            <div style="font-size: 0.9rem;">${data.message}</div>
+                        </td>
+                    </tr>
+                `;
+            }
         }
     } catch (error) {
         console.error('Failed to load admin users:', error);
-        // Show empty state instead of error
-        displayAdminUsersTable([]);
+        // Show empty state with error message
+        const tbody = document.getElementById('adminUsersTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #ef4444; padding: 40px;">
+                        <div style="font-size: 1.2rem; margin-bottom: 10px;">⚠️ Connection Error</div>
+                        <div style="font-size: 0.9rem;">Failed to connect to server. Please try again.</div>
+                    </td>
+                </tr>
+            `;
+        }
     }
 }
 
@@ -1679,10 +1695,12 @@ function displayAdminUsersTable(users) {
     if (users.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
-                    <div style="font-size: 1.2rem; margin-bottom: 10px;">👥</div>
-                    <div style="font-weight: 600; margin-bottom: 5px;">No admin users found</div>
-                    <div style="font-size: 0.875rem;">Click "Add Admin User" to create your first admin account</div>
+                <td colspan="7" style="text-align: center; color: #64748b; padding: 40px;">
+                    <div style="font-size: 1.2rem; margin-bottom: 10px;">👥 No Admin Users Yet</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 15px;">Click "Add Admin User" to create your first admin account</div>
+                    <button class="btn btn-primary" onclick="openAddAdminUserModal()" style="padding: 8px 16px; font-size: 0.875rem;">
+                        ➕ Add First Admin User
+                    </button>
                 </td>
             </tr>
         `;
@@ -1696,7 +1714,7 @@ function displayAdminUsersTable(users) {
             </td>
             <td>${user.email}</td>
             <td>
-                <span class="role-badge ${user.role.toLowerCase().replace(' ', '-')}">${user.role}</span>
+                <span class="status-badge role-${user.role.toLowerCase().replace(' ', '-')}">${user.role}</span>
             </td>
             <td>
                 <span class="status-badge ${user.status}">${user.status}</span>
@@ -1704,10 +1722,11 @@ function displayAdminUsersTable(users) {
             <td>${user.last_login ? formatDate(user.last_login) : 'Never'}</td>
             <td>${formatDate(user.created_at)}</td>
             <td>
-                <button class="action-btn view" onclick="editUser(${user.id})" title="Edit">✏️</button>
-                <button class="action-btn download" onclick="resetUserPassword(${user.id})" title="Reset Password">🔑</button>
-                <button class="action-btn reupload" onclick="toggleUserStatus(${user.id})" title="Toggle Status">🔄</button>
-                ${user.id != currentUser.id ? `<button class="action-btn view" onclick="deleteUser(${user.id})" title="Delete" style="background: #fef2f2; color: #dc2626;">🗑️</button>` : ''}
+                <button class="action-btn view" onclick="viewAdminUser(${user.id})" title="View">👁️</button>
+                <button class="action-btn edit" onclick="editAdminUser(${user.id})" title="Edit">✏️</button>
+                <button class="action-btn reset" onclick="resetAdminUserPassword(${user.id})" title="Reset Password">🔑</button>
+                <button class="action-btn toggle" onclick="toggleAdminUserStatus(${user.id})" title="Toggle Status">🔄</button>
+                <button class="action-btn delete" onclick="deleteAdminUser(${user.id})" title="Delete">🗑️</button>
             </td>
         </tr>
     `).join('');
@@ -1732,15 +1751,15 @@ function closeAddAdminUserModal() {
     document.getElementById('addAdminUserForm').reset();
 }
 
-async function addAdminUser() {
-    const form = document.getElementById('addAdminUserForm');
-    const formData = new FormData(form);
+async function handleAddAdminUser(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
     formData.append('action', 'add');
     
-    const submitBtn = document.getElementById('addAdminUserBtn');
-    const originalText = submitBtn.textContent;
-    
     // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Adding User...';
     
@@ -1751,17 +1770,21 @@ async function addAdminUser() {
         });
         
         const data = await response.json();
+        console.log('Add admin user response:', data); // Debug log
         
         if (data.success) {
-            showMessage(data.message, 'success');
+            showMessage('Admin user added successfully!', 'success');
             closeAddAdminUserModal();
-            loadAdminUsersData();
+            // Force reload the data
+            setTimeout(() => {
+                loadAdminUsersData();
+            }, 500);
         } else {
             showMessage(data.message, 'error');
         }
     } catch (error) {
         console.error('Failed to add admin user:', error);
-        showMessage('Failed to add admin user', 'error');
+        showMessage('Failed to add admin user. Please try again.', 'error');
     } finally {
         // Restore button state
         submitBtn.disabled = false;
@@ -1811,6 +1834,46 @@ function closeUserModal() {
     document.getElementById('userModal').classList.remove('active');
     document.getElementById('userModal').style.display = 'none';
     document.getElementById('userForm').reset();
+}
+
+async function handleUpdateAdminUser(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    formData.append('action', 'update');
+    
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Updating...';
+    
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage('Admin user updated successfully!', 'success');
+            closeEditAdminUserModal();
+            // Force reload the data
+            setTimeout(() => {
+                loadAdminUsersData();
+            }, 500);
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to update admin user:', error);
+        showMessage('Failed to update admin user. Please try again.', 'error');
+    } finally {
+        // Restore button state
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
 }
 
 async function resetUserPassword(userId) {
@@ -1878,6 +1941,97 @@ async function deleteUser(userId) {
     } catch (error) {
         console.error('Failed to delete user:', error);
         showMessage('Failed to delete user', 'error');
+    }
+}
+
+async function deleteAdminUser(userId) {
+    if (!confirm('Are you sure you want to delete this admin user? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=delete&id=${userId}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            // Force reload the data
+            setTimeout(() => {
+                loadAdminUsersData();
+            }, 500);
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to delete admin user:', error);
+        showMessage('Failed to delete admin user', 'error');
+    }
+}
+
+async function toggleAdminUserStatus(userId) {
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=toggle_status&id=${userId}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            // Force reload the data
+            setTimeout(() => {
+                loadAdminUsersData();
+            }, 500);
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to toggle user status:', error);
+        showMessage('Failed to toggle user status', 'error');
+    }
+}
+
+async function resetAdminUserPassword(userId) {
+    const newPassword = prompt('Enter new password (leave empty for default "password"):') || 'password';
+    
+    if (!newPassword) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=reset_password&id=${userId}&new_password=${encodeURIComponent(newPassword)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            // Force reload the data
+            setTimeout(() => {
+                loadAdminUsersData();
+            }, 500);
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to reset password:', error);
+        showMessage('Failed to reset password', 'error');
     }
 }
 

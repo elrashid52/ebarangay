@@ -1552,6 +1552,27 @@ body {
 }
 
 /* Role badges */
+.status-badge.role-super-admin {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.role-admin {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-badge.role-moderator {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.status-badge.role-staff {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+/* Role badges */
 .role-badge {
     padding: 4px 8px;
     border-radius: 12px;
@@ -1592,6 +1613,16 @@ body {
 .status-badge.Active {
     background: #d1fae5;
     color: #065f46;
+}
+
+.status-badge.Inactive {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.status-badge.Suspended {
+    background: #fee2e2;
+    color: #991b1b;
 }
 
 .status-badge.Deactivated {
@@ -1667,6 +1698,39 @@ body {
 
 .admin-action-btn.delete:hover {
     background: #fee2e2;
+    transform: translateY(-1px);
+}
+
+.action-btn.edit {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.action-btn.edit:hover {
+    background: #dbeafe;
+    transform: translateY(-1px);
+}
+
+.action-btn.reset {
+    background: #fef3c7;
+    color: #d97706;
+    border: 1px solid #fcd34d;
+}
+
+.action-btn.reset:hover {
+    background: #fde68a;
+    transform: translateY(-1px);
+}
+
+.action-btn.toggle {
+    background: #f0fdf4;
+    color: #059669;
+    border: 1px solid #bbf7d0;
+}
+
+.action-btn.toggle:hover {
+    background: #dcfce7;
     transform: translateY(-1px);
 }
 

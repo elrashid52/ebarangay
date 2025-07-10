@@ -218,6 +218,14 @@ switch($action) {
                 
                 // Also add to residents table with admin role for unified login
                 try {
+                    // Map admin roles to resident roles
+                    $residentRole = 'Admin'; // Default
+                    if ($role === 'Super Admin') {
+                        $residentRole = 'Super Admin';
+                    } elseif ($role === 'Staff') {
+                        $residentRole = 'Staff';
+                    }
+                    
                     $residentQuery = "INSERT INTO residents (email, password, first_name, last_name, role, status) 
                                      VALUES (:email, :password, :first_name, :last_name, :role, 'Active')";
                     $residentStmt = $db->prepare($residentQuery);
@@ -225,7 +233,7 @@ switch($action) {
                     $residentStmt->bindParam(':password', $hashedPassword);
                     $residentStmt->bindParam(':first_name', $first_name);
                     $residentStmt->bindParam(':last_name', $last_name);
-                    $residentStmt->bindParam(':role', $role);
+                    $residentStmt->bindParam(':role', $residentRole);
                     $residentStmt->execute();
                 } catch (Exception $e) {
                     // If residents insert fails, it's okay - admin_users table is primary
@@ -298,6 +306,38 @@ switch($action) {
             $stmt->bindParam(':id', $id);
             
             if($stmt->execute()) {
+                // Also update in residents table if exists
+                try {
+                    $residentRole = 'Admin'; // Default
+                    if ($role === 'Super Admin') {
+                        $residentRole = 'Super Admin';
+                    } elseif ($role === 'Staff') {
+                        $residentRole = 'Staff';
+                    }
+                    
+                    $residentQuery = "UPDATE residents SET 
+                                     first_name = :first_name, last_name = :last_name, 
+                                     email = :email, role = :role, status = 'Active'
+                                     WHERE email = :old_email";
+                    $residentStmt = $db->prepare($residentQuery);
+                    $residentStmt->bindParam(':first_name', $first_name);
+                    $residentStmt->bindParam(':last_name', $last_name);
+                    $residentStmt->bindParam(':email', $email);
+                    $residentStmt->bindParam(':role', $residentRole);
+                    
+                    // Get old email for update
+                    $oldEmailQuery = "SELECT email FROM admin_users WHERE id = :id";
+                    $oldEmailStmt = $db->prepare($oldEmailQuery);
+                    $oldEmailStmt->bindParam(':id', $id);
+                    $oldEmailStmt->execute();
+                    $oldEmail = $oldEmailStmt->fetch(PDO::FETCH_ASSOC)['email'] ?? $email;
+                    
+                    $residentStmt->bindParam(':old_email', $oldEmail);
+                    $residentStmt->execute();
+                } catch (Exception $e) {
+                    error_log("Failed to update residents table: " . $e->getMessage());
+                }
+                
                 // Log activity
                 logAdminActivity($_SESSION['admin_id'], 'update_admin_user', 'admin_user', $id, "Updated admin user: $first_name $last_name ($role)");
                 
@@ -328,6 +368,20 @@ switch($action) {
             $stmt->bindParam(':id', $id);
             
             if($stmt->execute()) {
+                // Also update password in residents table if exists
+                try {
+                    $residentQuery = "UPDATE residents SET password = :password WHERE id IN (
+                                     SELECT r.id FROM residents r 
+                                     JOIN admin_users au ON r.email = au.email 
+                                     WHERE au.id = :admin_id)";
+                    $residentStmt = $db->prepare($residentQuery);
+                    $residentStmt->bindParam(':password', $hashedPassword);
+                    $residentStmt->bindParam(':admin_id', $id);
+                    $residentStmt->execute();
+                } catch (Exception $e) {
+                    error_log("Failed to update password in residents table: " . $e->getMessage());
+                }
+                
                 // Log activity
                 logAdminActivity($_SESSION['admin_id'], 'reset_password', 'admin_user', $id, "Reset password for admin user ID: $id");
                 
@@ -366,6 +420,21 @@ switch($action) {
                 $updateStmt->bindParam(':id', $id);
                 
                 if($updateStmt->execute()) {
+                    // Also update status in residents table if exists
+                    try {
+                        $residentStatus = ($newStatus === 'Active') ? 'Active' : 'Deactivated';
+                        $residentQuery = "UPDATE residents SET status = :status WHERE id IN (
+                                         SELECT r.id FROM residents r 
+                                         JOIN admin_users au ON r.email = au.email 
+                                         WHERE au.id = :admin_id)";
+                        $residentStmt = $db->prepare($residentQuery);
+                        $residentStmt->bindParam(':status', $residentStatus);
+                        $residentStmt->bindParam(':admin_id', $id);
+                        $residentStmt->execute();
+                    } catch (Exception $e) {
+                        error_log("Failed to update status in residents table: " . $e->getMessage());
+                    }
+                    
                     // Log activity
                     logAdminActivity($_SESSION['admin_id'], 'toggle_status', 'admin_user', $id, "Changed status to $newStatus for {$user['first_name']} {$user['last_name']}");
                     
@@ -414,6 +483,16 @@ switch($action) {
             $stmt->bindParam(':id', $id);
             
             if($stmt->execute()) {
+                // Also delete from residents table if exists
+                try {
+                    $residentQuery = "DELETE FROM residents WHERE email = :email";
+                    $residentStmt = $db->prepare($residentQuery);
+                    $residentStmt->bindParam(':email', $user['email'] ?? '');
+                    $residentStmt->execute();
+                } catch (Exception $e) {
+                    error_log("Failed to delete from residents table: " . $e->getMessage());
+                }
+                
                 // Log activity
                 logAdminActivity($_SESSION['admin_id'], 'delete_admin_user', 'admin_user', $id, "Deleted admin user: {$user['first_name']} {$user['last_name']}");
                 
