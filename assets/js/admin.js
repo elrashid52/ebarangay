@@ -219,7 +219,7 @@ function showAdminPage(page) {
             logAdminActivity('view_activities', 'page', null, 'Viewed activity reports page');
             break;
         case 'users':
-            loadUsersData();
+            loadAdminUsersData();
             break;
         case 'backup':
             loadBackupData();
@@ -1639,25 +1639,53 @@ function clearActivityFilters() {
 }
 
 // Admin Users Management
-async function loadUsersData() {
+async function loadAdminUsersData() {
+    // First, try to seed demo data if table is empty
+    try {
+        await fetch('api/admin-users.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=seed_demo_data'
+        });
+    } catch (error) {
+        console.log('Demo data seeding skipped:', error);
+    }
+    
     try {
         const response = await fetch('api/admin-users.php?action=get_all');
         const data = await response.json();
         
         if (data.success) {
-            displayUsersTable(data.users);
+            displayAdminUsersTable(data.users);
+            updateAdminUsersStats(data);
+        } else {
+            console.error('Failed to load admin users:', data.message);
+            // Show empty state instead of error
+            displayAdminUsersTable([]);
         }
     } catch (error) {
         console.error('Failed to load admin users:', error);
+        // Show empty state instead of error
+        displayAdminUsersTable([]);
     }
 }
 
-function displayUsersTable(users) {
-    const tbody = document.getElementById('usersTableBody');
+function displayAdminUsersTable(users) {
+    const tbody = document.getElementById('adminUsersTableBody');
     if (!tbody) return;
     
     if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b;">No admin users found</td></tr>';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
+                    <div style="font-size: 1.2rem; margin-bottom: 10px;">👥</div>
+                    <div style="font-weight: 600; margin-bottom: 5px;">No admin users found</div>
+                    <div style="font-size: 0.875rem;">Click "Add Admin User" to create your first admin account</div>
+                </td>
+            </tr>
+        `;
         return;
     }
     
@@ -1683,6 +1711,62 @@ function displayUsersTable(users) {
             </td>
         </tr>
     `).join('');
+}
+
+function updateAdminUsersStats(data) {
+    // Update any stats displays if they exist
+    const totalElement = document.getElementById('totalAdminUsers');
+    if (totalElement) {
+        totalElement.textContent = data.total || 0;
+    }
+}
+
+function openAddAdminUserModal() {
+    document.getElementById('addAdminUserModal').classList.add('active');
+    document.getElementById('addAdminUserModal').style.display = 'flex';
+}
+
+function closeAddAdminUserModal() {
+    document.getElementById('addAdminUserModal').classList.remove('active');
+    document.getElementById('addAdminUserModal').style.display = 'none';
+    document.getElementById('addAdminUserForm').reset();
+}
+
+async function addAdminUser() {
+    const form = document.getElementById('addAdminUserForm');
+    const formData = new FormData(form);
+    formData.append('action', 'add');
+    
+    const submitBtn = document.getElementById('addAdminUserBtn');
+    const originalText = submitBtn.textContent;
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding User...';
+    
+    try {
+        const response = await fetch('api/admin-users.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            closeAddAdminUserModal();
+            loadAdminUsersData();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Failed to add admin user:', error);
+        showMessage('Failed to add admin user', 'error');
+    } finally {
+        // Restore button state
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
 }
 
 function openAddUserModal() {
@@ -1759,7 +1843,7 @@ async function toggleUserStatus(userId) {
         
         if (data.success) {
             showMessage(data.message, 'success');
-            loadUsersData();
+            loadAdminUsersData();
         } else {
             showMessage(data.message, 'error');
         }
@@ -1787,7 +1871,7 @@ async function deleteUser(userId) {
         
         if (data.success) {
             showMessage(data.message, 'success');
-            loadUsersData();
+            loadAdminUsersData();
         } else {
             showMessage(data.message, 'error');
         }
@@ -1821,7 +1905,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     showMessage(data.message, 'success');
                     closeUserModal();
-                    loadUsersData();
+                    loadAdminUsersData();
                 } else {
                     showMessage(data.message, 'error');
                 }

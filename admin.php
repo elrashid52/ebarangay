@@ -542,17 +542,17 @@
                 <div class="admin-data-grid">
                     <div class="admin-data-grid-header">
                         <div class="admin-search-bar">
-                            <input type="text" id="usersSearch" placeholder="Search admin users..." class="admin-search-input">
+                            <input type="text" id="usersSearch" placeholder="Search admin users..." class="admin-search-input" onkeyup="searchAdminUsers()">
                         </div>
                         <div class="admin-filter-controls">
-                            <select id="usersRoleFilter" class="admin-filter-select">
+                            <select id="usersRoleFilter" class="admin-filter-select" onchange="filterAdminUsers()">
                                 <option value="">All Roles</option>
                                 <option value="Super Admin">Super Admin</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Moderator">Moderator</option>
                                 <option value="Staff">Staff</option>
                             </select>
-                            <select id="usersStatusFilter" class="admin-filter-select">
+                            <select id="usersStatusFilter" class="admin-filter-select" onchange="filterAdminUsers()">
                                 <option value="">All Status</option>
                                 <option value="Active">Active</option>
                                 <option value="Inactive">Inactive</option>
