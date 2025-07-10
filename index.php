@@ -59,6 +59,50 @@
             <div id="loginSwitch" class="auth-switch">
                 <p>Don't have an account? <a href="#" id="switchToRegister">Sign up here</a></p>
             </div>
+
+            <!-- Sign Up Form -->
+            <form id="signupForm" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label for="signup_first_name">First name</label>
+                    <input type="text" id="signup_first_name" name="first_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_last_name">Last name</label>
+                    <input type="text" id="signup_last_name" name="last_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_email">Email</label>
+                    <input type="email" id="signup_email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_birth_date">Birth date</label>
+                    <input type="date" id="signup_birth_date" name="birth_date">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_phone">Phone number</label>
+                    <input type="tel" id="signup_phone" name="phone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_password">Password</label>
+                    <input type="password" id="signup_password" name="password" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup_confirm_password">Confirm password</label>
+                    <input type="password" id="signup_confirm_password" name="confirm_password" required minlength="6">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+                
+                <div class="auth-switch">
+                    <p>Already have an account? <a href="#" id="showLogin">Log in</a></p>
+                </div>
+            </form>
         </div>
         
         <!-- Register Card -->
@@ -880,6 +924,151 @@
         </div>
     </div>
 
+    <script>
+        let currentUser = null;
+        let currentView = 'dashboard';
+        
+        // Toggle between login and signup forms
+        document.getElementById('showSignup').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('signupForm').style.display = 'block';
+            document.querySelector('.auth-title').textContent = 'Sign up';
+            document.querySelector('.auth-subtitle').textContent = 'Create your account to access barangay services';
+        });
+        
+        document.getElementById('showLogin').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.querySelector('.auth-title').textContent = 'Welcome back';
+            document.querySelector('.auth-subtitle').textContent = 'Sign in to your account to continue';
+        });
+        
+        // Handle signup form submission
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const password = formData.get('password');
+            const confirmPassword = formData.get('confirm_password');
+            
+            // Validate password confirmation
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('api/auth.php', {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        action: 'register',
+                        first_name: formData.get('first_name'),
+                        last_name: formData.get('last_name'),
+                        email: formData.get('email'),
+                        phone: formData.get('phone'),
+                        birth_date: formData.get('birth_date'),
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('Account created successfully! Please log in.', 'success');
+                    // Switch back to login form
+                    document.getElementById('showLogin').click();
+                    // Clear signup form
+                    document.getElementById('signupForm').reset();
+                } else {
+                    showMessage(data.message || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                console.error('Signup error:', error);
+                showMessage('An error occurred during registration', 'error');
+            }
+        });
+        
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch('api/auth.php', {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        action: 'login',
+                        email: formData.get('email'),
+                        password: formData.get('password')
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    showApp();
+                    loadDashboard();
+                } else {
+                    showMessage(data.message || 'Login failed', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('An error occurred during login', 'error');
+            }
+        });
+        
+        // Check if user is already logged in
+        checkSession();
+        
+        async function checkSession() {
+            try {
+                const response = await fetch('api/auth.php?action=check_session');
+                const data = await response.json();
+                
+                if (data.success && data.user) {
+                    currentUser = data.user;
+                    showApp();
+                    loadDashboard();
+                } else {
+                    showAuth();
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+                showMessage(data.message || 'Session check failed', 'error');
+            }
+        }
+        
+        function showMessage(message, type) {
+            // Remove existing messages
+            const existingMessage = document.querySelector('.auth-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            // Create new message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `auth-message ${type}`;
+            messageDiv.textContent = message;
+            
+            // Insert message before the active form
+            const activeForm = document.getElementById('loginForm').style.display !== 'none' ? 
+                document.getElementById('loginForm') : document.getElementById('signupForm');
+            activeForm.parentNode.insertBefore(messageDiv, activeForm);
+            
+            // Auto-remove success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
+    </script>
     <script src="assets/js/app.js"></script>
 </body>
 </html>
