@@ -51,7 +51,6 @@
                 <div class="demo-account" style="margin-top: 10px;">
                     <strong>Admin:</strong> admin@barangay.gov.ph / admin123<br>
                     <button type="button" class="btn btn-secondary" 
-                <p>Need an account? <a href="#" onclick="showRegistrationForm()">Sign Up</a> | <a href="admin.php">Admin Portal</a> | <a href="staff.php">Staff Portal</a></p>
                         Use Admin Demo
                     </button>
                 </div>
