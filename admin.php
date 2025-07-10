@@ -540,10 +540,10 @@
             </div>
 
             <!-- Backup & Restore Page -->
-            <div id="backupPage" class="admin-page" style="display: none;">
+            <div id="adminBackupPage" class="admin-page" style="display: none;">
                 <div class="admin-page-header">
-                    <h1 class="admin-page-title">💾 Backup & Restore</h1>
-                    <p class="admin-page-subtitle">Secure your system data with automated backup and restore capabilities</p>
+                    <h1 class="admin-page-title">Backup & Restore</h1>
+                    <p class="admin-page-subtitle">Manage system backups and data restoration</p>
                 </div>
                 
                 <!-- Backup Statistics -->
@@ -734,6 +734,8 @@
                             <ul class="guideline-list">
                                 <li>Encrypt sensitive backup files</li>
                                 <li>Limit backup access permissions</li>
+                                <li>Monitor backup file integrity</li>
+                                <li>Use secure storage locations</li>
                                 <li>Regularly audit backup logs</li>
                                 <li>Implement backup retention policies</li>
                             </ul>
@@ -747,7 +749,9 @@
                             <ul class="guideline-list">
                                 <li>Identify the correct backup version</li>
                                 <li>Verify backup file integrity</li>
+                                <li>Stop all system processes if needed</li>
                                 <li>Restore database first, then files</li>
+                                <li>Test system functionality</li>
                                 <li>Update users about the restoration</li>
                             </ul>
                         </div>

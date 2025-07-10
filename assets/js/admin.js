@@ -1715,15 +1715,6 @@ function displayBackupsTable(backups) {
 // Backup and Restore functions
 async function createBackup() {
     const backupName = document.getElementById('backupName').value.trim();
-        // Load backup statistics
-        const statsResponse = await fetch('api/admin-backup.php?action=get_backup_stats');
-        const statsData = await statsResponse.json();
-        
-        if (statsData.success) {
-            updateBackupStats(statsData.stats);
-        }
-        
-        // Load backup list
     const backupType = document.getElementById('backupType').value;
     
     if (!backupName) {
@@ -2087,13 +2078,6 @@ async function loadBackupData() {
     } catch (error) {
         console.error('Failed to load backup data:', error);
     }
-}
-
-function updateBackupStats(stats) {
-    document.getElementById('totalBackups').textContent = stats.total_backups || 0;
-    document.getElementById('totalBackupSize').textContent = stats.total_size_formatted || '0 B';
-    document.getElementById('latestBackup').textContent = stats.latest_backup || 'Never';
-    document.getElementById('backupStatus').textContent = stats.status || 'Ready';
 }
 
 function displayBackupsList(backups) {

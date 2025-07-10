@@ -1224,65 +1224,6 @@ body {
     font-size: 0.875rem;
 }
 
-.backup-name {
-    font-weight: 600;
-    color: #1e293b;
-}
-
-.backup-date {
-    color: #6b7280;
-    font-size: 0.875rem;
-}
-
-.backup-size {
-    color: #059669;
-}
-
-/* Responsive Design for Backup Page */
-@media (max-width: 768px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    
-    .dashboard-card {
-        padding: 20px;
-    }
-    
-    .card-number {
-        font-size: 1.75rem;
-    }
-    
-    .form-container {
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-    }
-    
-    .data-grid-table th,
-    .data-grid-table td {
-        padding: 12px 15px;
-        font-size: 0.8rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .card-number {
-        font-size: 1.5rem;
-    }
-    
-    .dashboard-card {
-        padding: 15px;
-    }
-    
-    .section-title h2 {
-        font-size: 1.25rem;
-    }
-}
-
 /* Bulk Actions Styles */
 .admin-bulk-actions {
     background: #f8fafc;
