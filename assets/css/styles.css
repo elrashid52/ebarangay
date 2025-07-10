@@ -829,6 +829,11 @@ body {
     color: #065f46;
 }
 
+.certificate-badge.delivery {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
 .certificate-badge.pickup-only {
     background: #fef3c7;
     color: #92400e;
@@ -929,6 +934,17 @@ body {
 
 .action-btn.download:hover {
     background: #d1fae5;
+    transform: translateY(-1px);
+}
+
+.action-btn.delivery {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.action-btn.delivery:hover {
+    background: #dbeafe;
     transform: translateY(-1px);
 }
 
@@ -1613,6 +1629,241 @@ body {
 .rejection-documents {
     margin-bottom: 16px;
     color: #7f1d1d;
+}
+
+/* Delivery Information Modal Styles */
+.delivery-info-modal {
+    max-width: 800px;
+    max-height: 90vh;
+}
+
+.delivery-info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.delivery-status-card {
+    text-align: center;
+    padding: 24px;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border-radius: 12px;
+    border: 2px solid #bfdbfe;
+}
+
+.delivery-icon-large {
+    font-size: 4rem;
+    margin-bottom: 16px;
+}
+
+.delivery-status-card h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e40af;
+    margin-bottom: 12px;
+}
+
+.delivery-status-text {
+    font-size: 1rem;
+    color: #374151;
+}
+
+.delivery-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.delivery-detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.detail-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.detail-content strong {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.detail-content p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.delivery-timeline {
+    background: #f9fafb;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.delivery-timeline h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 16px;
+}
+
+.timeline-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.timeline-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.timeline-step.completed {
+    background: #ecfdf5;
+    border-left: 4px solid #10b981;
+}
+
+.timeline-step.active {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+}
+
+.timeline-step:not(.completed):not(.active) {
+    background: #f3f4f6;
+    border-left: 4px solid #d1d5db;
+}
+
+.step-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.step-content strong {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.step-content p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.delivery-important-notes {
+    background: #fef3c7;
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 4px solid #f59e0b;
+}
+
+.delivery-important-notes h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 12px;
+}
+
+.delivery-important-notes ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.delivery-important-notes li {
+    color: #92400e;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.delivery-important-notes li:last-child {
+    margin-bottom: 0;
+}
+
+.delivery-contact-info {
+    background: #f0fdf4;
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 4px solid #10b981;
+}
+
+.delivery-contact-info h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #065f46;
+    margin-bottom: 12px;
+}
+
+.delivery-contact-info p {
+    color: #065f46;
+    margin-bottom: 12px;
+}
+
+.contact-details {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #bbf7d0;
+}
+
+.contact-details p {
+    margin-bottom: 8px;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.contact-details p:last-child {
+    margin-bottom: 0;
+}
+
+.contact-details strong {
+    color: #065f46;
+    font-weight: 600;
+}
+
+/* Responsive adjustments for delivery modal */
+@media (max-width: 768px) {
+    .delivery-info-modal {
+        max-width: 95vw;
+        margin: 10px;
+    }
+    
+    .delivery-details-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .delivery-detail-item {
+        padding: 12px;
+    }
+    
+    .delivery-timeline,
+    .delivery-important-notes,
+    .delivery-contact-info {
+        padding: 16px;
+    }
+    
+    .delivery-status-card {
+        padding: 20px;
+    }
+    
+    .delivery-icon-large {
+        font-size: 3rem;
+    }
 }
 
 .rejection-documents strong {

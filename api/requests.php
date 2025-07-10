@@ -453,14 +453,16 @@ switch($action) {
             [
                 'id' => 5,
                 'name' => 'Barangay ID',
-                'description' => 'Official barangay identification card',
+                'description' => 'Official barangay identification card (delivered to your address)',
                 'required_documents' => [
                     'Proof of Residency (utility bill, lease, or certification)',
                     'Passport-sized photo',
                     'Valid IDs'
                 ],
                 'processing_fee' => 100.00,
-                'processing_days' => 7
+                'processing_days' => 7,
+                'delivery_method' => 'home_delivery',
+                'delivery_time' => '3-5 business days after approval'
             ]
         ];
         

@@ -593,8 +593,8 @@ function displayRequestsTable(requests) {
             <td class="col-certificate-type">
                 <div class="certificate-type-cell">
                     <div class="certificate-name">${request.type}</div>
-                    <div class="certificate-badge ${request.type.toLowerCase().includes('barangay id') ? 'pickup-only' : 'downloadable'}">
-                        ${request.type.toLowerCase().includes('barangay id') ? '📍 Pickup Only' : '📥 Downloadable'}
+                    <div class="certificate-badge ${request.type.toLowerCase().includes('barangay id') ? 'delivery' : 'downloadable'}">
+                        ${request.type.toLowerCase().includes('barangay id') ? '🚚 Home Delivery' : '📥 Downloadable'}
                     </div>
                 </div>
             </td>
@@ -619,8 +619,8 @@ function displayRequestsTable(requests) {
                     </button>
                     ${request.status === 'approved' && request.can_download ? 
                         `<button class="action-btn download" onclick="downloadDocument(${request.id})" title="Download">📥</button>` : ''}
-                    ${request.status === 'ready_for_pickup' ? 
-                        `<button class="action-btn view" onclick="viewDocument(${request.id})" title="View">👁️</button>` : ''}
+                    ${request.status === 'approved' && request.type.toLowerCase().includes('barangay id') ? 
+                        `<button class="action-btn delivery" onclick="viewDeliveryInfo(${request.id})" title="Delivery Info">🚚</button>` : ''}
                     ${request.status === 'rejected' && request.can_reupload ? 
                         `<button class="action-btn reupload" onclick="openResubmitModal(${request.id})" title="Resubmit">🔄</button>` : ''}
                 </div>
@@ -1356,7 +1356,7 @@ function showRequestDetailsModal(request) {
     document.getElementById('detailStatus').textContent = formatStatus(request.status);
     document.getElementById('detailStatus').className = `status-badge ${request.status}`;
     document.getElementById('detailFee').textContent = `₱${parseFloat(request.processing_fee || 0).toFixed(2)}`;
-    document.getElementById('detailDeliveryMethod').textContent = request.type.toLowerCase().includes('barangay id') ? '📍 Pickup Only' : '📥 Downloadable PDF';
+    document.getElementById('detailDeliveryMethod').textContent = request.type.toLowerCase().includes('barangay id') ? '🚚 Home Delivery (3-5 business days)' : '📥 Downloadable PDF';
     document.getElementById('detailRequestDate').textContent = formatDate(request.created_at);
     document.getElementById('detailPurpose').textContent = request.purpose;
     
@@ -1407,8 +1407,26 @@ function showRequestDetailsModal(request) {
     
     // Handle Barangay ID section
     const barangayIdSection = document.getElementById('detailBarangayIdSection');
-    if (request.type.toLowerCase().includes('barangay id') && request.status === 'ready_for_pickup') {
-        document.getElementById('barangayIdImage').src = 'https://via.placeholder.com/400x250/4f46e5/ffffff?text=BARANGAY+ID+SAMPLE';
+    if (request.type.toLowerCase().includes('barangay id') && request.status === 'approved') {
+        // Update the delivery information
+        const deliveryInfo = document.getElementById('barangayIdDeliveryInfo');
+        if (deliveryInfo) {
+            deliveryInfo.innerHTML = `
+                <div class="delivery-status">
+                    <div class="delivery-icon">🚚</div>
+                    <div class="delivery-details">
+                        <h4>Your Barangay ID is being prepared for delivery</h4>
+                        <p><strong>Estimated Delivery:</strong> 3-5 business days from approval</p>
+                        <p><strong>Delivery Address:</strong> Your registered address</p>
+                        <p><strong>Delivery Fee:</strong> Free of charge</p>
+                        <p><strong>Contact:</strong> Please ensure someone is available to receive the ID</p>
+                    </div>
+                </div>
+                <div class="delivery-note">
+                    <p><strong>Note:</strong> Your Barangay ID will be delivered to your registered address within 3-5 business days. Please ensure that the delivery address in your profile is correct and up-to-date.</p>
+                </div>
+            `;
+        }
         barangayIdSection.style.display = 'block';
     } else {
         barangayIdSection.style.display = 'none';
@@ -1416,7 +1434,7 @@ function showRequestDetailsModal(request) {
     
     // Handle download button
     const downloadBtn = document.getElementById('detailDownloadBtn');
-    if (request.status === 'approved' && request.can_download) {
+    if (request.status === 'approved' && request.can_download && !request.type.toLowerCase().includes('barangay id')) {
         downloadBtn.style.display = 'inline-block';
         downloadBtn.onclick = () => downloadDocument(request.id);
     } else {
@@ -1424,6 +1442,145 @@ function showRequestDetailsModal(request) {
     }
     
     modal.style.display = 'flex';
+}
+
+// New function to show delivery information for Barangay ID
+function viewDeliveryInfo(requestId) {
+    // Find the request data
+    fetch(`api/requests.php?action=get_all`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const request = data.requests.find(r => r.id == requestId);
+                if (request && request.type.toLowerCase().includes('barangay id')) {
+                    showDeliveryInfoModal(request);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching request data:', error);
+            showMessage('Failed to load delivery information', 'error');
+        });
+}
+
+function showDeliveryInfoModal(request) {
+    // Create and show delivery info modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+        <div class="modal-content delivery-info-modal">
+            <div class="modal-header">
+                <h2>🚚 Barangay ID Delivery Information</h2>
+                <button class="modal-close" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            <div class="delivery-info-content">
+                <div class="delivery-status-card">
+                    <div class="delivery-icon-large">🆔</div>
+                    <h3>Your Barangay ID is Ready for Delivery!</h3>
+                    <p class="delivery-status-text">Status: <span class="status-badge approved">Approved & Processing</span></p>
+                </div>
+                
+                <div class="delivery-details-grid">
+                    <div class="delivery-detail-item">
+                        <div class="detail-icon">📅</div>
+                        <div class="detail-content">
+                            <strong>Estimated Delivery</strong>
+                            <p>3-5 business days from approval date</p>
+                        </div>
+                    </div>
+                    
+                    <div class="delivery-detail-item">
+                        <div class="detail-icon">📍</div>
+                        <div class="detail-content">
+                            <strong>Delivery Address</strong>
+                            <p>Your registered home address</p>
+                        </div>
+                    </div>
+                    
+                    <div class="delivery-detail-item">
+                        <div class="detail-icon">💰</div>
+                        <div class="detail-content">
+                            <strong>Delivery Fee</strong>
+                            <p>Free of charge</p>
+                        </div>
+                    </div>
+                    
+                    <div class="delivery-detail-item">
+                        <div class="detail-icon">📞</div>
+                        <div class="detail-content">
+                            <strong>Contact Required</strong>
+                            <p>Someone must be available to receive</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="delivery-timeline">
+                    <h4>📋 Delivery Process</h4>
+                    <div class="timeline-steps">
+                        <div class="timeline-step completed">
+                            <div class="step-icon">✅</div>
+                            <div class="step-content">
+                                <strong>Application Approved</strong>
+                                <p>Your Barangay ID request has been approved</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step active">
+                            <div class="step-icon">🏭</div>
+                            <div class="step-content">
+                                <strong>ID Production</strong>
+                                <p>Your ID is being printed and prepared</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-icon">🚚</div>
+                            <div class="step-content">
+                                <strong>Out for Delivery</strong>
+                                <p>ID will be delivered to your address</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-icon">📬</div>
+                            <div class="step-content">
+                                <strong>Delivered</strong>
+                                <p>ID successfully delivered and received</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="delivery-important-notes">
+                    <h4>📌 Important Notes</h4>
+                    <ul>
+                        <li><strong>Valid ID Required:</strong> Please have a valid government-issued ID ready for verification upon delivery</li>
+                        <li><strong>Personal Receipt:</strong> Only you or an authorized representative can receive the ID</li>
+                        <li><strong>Address Verification:</strong> Ensure your registered address is correct and accessible</li>
+                        <li><strong>Contact Information:</strong> Keep your mobile number active for delivery coordination</li>
+                        <li><strong>Delivery Hours:</strong> Monday to Friday, 8:00 AM to 5:00 PM</li>
+                    </ul>
+                </div>
+                
+                <div class="delivery-contact-info">
+                    <h4>📞 Need Help?</h4>
+                    <p>For delivery inquiries, contact the Barangay Office:</p>
+                    <div class="contact-details">
+                        <p><strong>Phone:</strong> (02) 123-4567</p>
+                        <p><strong>Mobile:</strong> 0917-123-4567</p>
+                        <p><strong>Email:</strong> delivery@barangay.gov.ph</p>
+                        <p><strong>Office Hours:</strong> Monday to Friday, 8:00 AM to 5:00 PM</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="this.closest('.modal').remove()">
+                    Got it, Thanks!
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
 }
 
 function closeRequestDetailsModal() {
