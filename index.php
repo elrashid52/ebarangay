@@ -214,6 +214,97 @@
         </div>
     </div>
 
+    <!-- Main Application Layout (Hidden by default) -->
+    <div class="app-layout" style="display: none;">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <div class="sidebar-logo-icon">🏛️</div>
+                    <div>
+                        <div>E-Barangay</div>
+                        <div class="sidebar-subtitle">Resident Portal</div>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" onclick="showDashboard()">
+                    <span class="nav-icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item" onclick="showProfile()">
+                    <span class="nav-icon">👤</span>
+                    My Profile
+                </a>
+                <a href="#" class="nav-item" onclick="showRequestCertificate()">
+                    <span class="nav-icon">📄</span>
+                    Request Certificate
+                </a>
+                <a href="#" class="nav-item" onclick="showMyRequests()">
+                    <span class="nav-icon">📋</span>
+                    My Requests
+                </a>
+                <a href="#" class="nav-item" onclick="logout()">
+                    <span class="nav-icon">🚪</span>
+                    Logout
+                </a>
+            </nav>
+        </div>
+        <div class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Welcome to your E-Barangay portal</p>
+            </div>
+            <div id="main-content-area">
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon total">📊</div>
+                            <div class="card-content">
+                                <h3>Total Requests</h3>
+                                <div class="card-number" id="total-requests">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon pending">⏳</div>
+                            <div class="card-content">
+                                <h3>Pending</h3>
+                                <div class="card-number" id="pending-requests">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon approved">✅</div>
+                            <div class="card-content">
+                                <h3>Approved</h3>
+                                <div class="card-number" id="approved-requests">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon rejected">❌</div>
+                            <div class="card-content">
+                                <h3>Rejected</h3>
+                                <div class="card-number" id="rejected-requests">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-requests">
+                    <div class="section-header">
+                        <h2>Recent Requests</h2>
+                    </div>
+                    <div id="recent-requests-content">
+                        <p>Loading recent requests...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Application Container -->
     <div id="appContainer" class="app-layout" style="display: none;">
         <!-- Sidebar -->
