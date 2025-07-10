@@ -759,7 +759,7 @@
                     </div>
                     <div class="detail-item">
                         <label>Delivery Method</label>
-                        <span id="detailDeliveryMethod">-</span>
+                        <span id="detailDeliveryMethod">🚚 Home Delivery (3-5 business days)</span>
                     </div>
                     <div class="detail-item">
                         <label>Request Date</label>
@@ -801,37 +801,9 @@
                 </div>
                 
                 <div class="detail-section" id="detailBarangayIdSection" style="display: none;">
-                    <h4>Barangay ID Preview</h4>
-                    <div class="barangay-id-preview">
-                        <div class="id-preview-container">
-                            <img id="barangayIdImage" alt="Barangay ID" class="barangay-id-image">
-                            <div class="id-preview-overlay">
-                                <div class="preview-label">
-                                    <span>👁️</span>
-                                    <span>Preview</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="id-preview-info">
-                            <p class="preview-note">
-                                <strong>📍 Ready for Pickup</strong><br>
-                                Your Barangay ID is ready for pickup at the Barangay Hall during office hours.
-                            </p>
-                            <div class="pickup-details">
-                                <div class="pickup-item">
-                                    <strong>Office Hours:</strong>
-                                    <span>Monday - Friday, 8:00 AM - 5:00 PM</span>
-                                </div>
-                                <div class="pickup-item">
-                                    <strong>Requirements:</strong>
-                                    <span>Valid ID and this reference number</span>
-                                </div>
-                                <div class="pickup-item">
-                                    <strong>Reference:</strong>
-                                    <span>BR-000001</span>
-                                </div>
-                            </div>
-                        </div>
+                    <h4>🚚 Barangay ID Delivery Information</h4>
+                    <div id="barangayIdDeliveryInfo">
+                        <!-- Delivery information will be populated by JavaScript -->
                     </div>
                 </div>
                 
