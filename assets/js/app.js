@@ -258,6 +258,8 @@ async function handleSignIn(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Signing In...';
     
+    console.log('Attempting login with:', { email, password: '***' });
+    
     try {
         console.log('Sending login request...');
         const response = await fetch('api/auth.php', {
@@ -1331,6 +1333,8 @@ async function handleReuploadSubmit(e) {
 async function viewRequestDetails(requestId) {
     try {
         const response = await fetch(`api/requests.php?action=get_all`);
+        console.log('Login response:', data);
+        
         const data = await response.json();
         
         if (data.success) {
@@ -1707,12 +1711,15 @@ function filterRequests() {
     rows.forEach(row => {
         if (!filter) {
             row.style.display = '';
-        } else {
+            if (data.redirect === 'admin' || (data.user && data.user.type === 'admin')) {
             const statusBadge = row.querySelector('.status-badge');
             if (statusBadge && statusBadge.classList.contains(filter)) {
                 row.style.display = '';
-            } else {
+            } else if (data.redirect === 'resident' || (data.user && data.user.type === 'resident')) {
                 row.style.display = 'none';
+            } else {
+                console.error('Unknown redirect type:', data.redirect);
+                showMessage('Login successful but redirect failed', 'error');
             }
         }
     });
