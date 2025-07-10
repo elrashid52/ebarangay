@@ -39,6 +39,10 @@
                     <div class="admin-nav-icon">📋</div>
                     Report Activities
                 </a>
+                <a href="#" class="nav-item" data-view="admin-users">
+                    <span class="nav-icon">👥</span>
+                    Manage Admin Access
+                </a>
                 <a href="#" class="admin-nav-item" data-admin-page="blotter">
                     <div class="admin-nav-icon">⚠️</div>
                     Blotter Reports
@@ -46,10 +50,6 @@
                 <a href="#" class="admin-nav-item" data-admin-page="users">
                     <div class="admin-nav-icon">👥</div>
                     Admin Users
-                </a>
-                <a href="#" class="admin-nav-item" data-admin-page="backup">
-                    <div class="admin-nav-icon">💾</div>
-                    Backup & Restore
                 </a>
                 <a href="#" class="admin-nav-item" onclick="adminSignOut()">
                     <div class="admin-nav-icon">🚪</div>
