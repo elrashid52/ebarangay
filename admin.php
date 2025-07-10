@@ -44,8 +44,8 @@
                     Blotter Reports
                 </a>
                 <a href="#" class="admin-nav-item" data-admin-page="users">
-                    <div class="admin-nav-icon">👤</div>
-                    Backup & Restore
+                    <div class="admin-nav-icon">👥</div>
+                    Admin Users
                 </a>
                 <a href="#" class="admin-nav-item" data-admin-page="backup">
                     <div class="admin-nav-icon">💾</div>
@@ -528,14 +528,59 @@
             <!-- Admin Users Page -->
             <div id="adminUsersPage" class="admin-page" style="display: none;">
                 <div class="admin-page-header">
-                    <h1 class="admin-page-title">Admin Users</h1>
-                    <p class="admin-page-subtitle">Manage administrator accounts</p>
+                    <div class="page-title-section">
+                        <h1 class="admin-page-title">Admin Users</h1>
+                        <p class="admin-page-subtitle">Manage admin users and barangay staff</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="admin-btn admin-btn-primary" onclick="openAddUserModal()">
+                            ➕ Add Admin User
+                        </button>
+                    </div>
                 </div>
                 
-                <div class="admin-empty-state">
-                    <div class="admin-empty-icon">👤</div>
-                    <h3>User Management</h3>
-                    <p>Admin user management system is coming soon.</p>
+                <div class="admin-data-grid">
+                    <div class="admin-data-grid-header">
+                        <div class="admin-search-bar">
+                            <input type="text" id="usersSearch" placeholder="Search admin users..." class="admin-search-input">
+                        </div>
+                        <div class="admin-filter-controls">
+                            <select id="usersRoleFilter" class="admin-filter-select">
+                                <option value="">All Roles</option>
+                                <option value="Super Admin">Super Admin</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Moderator">Moderator</option>
+                                <option value="Staff">Staff</option>
+                            </select>
+                            <select id="usersStatusFilter" class="admin-filter-select">
+                                <option value="">All Status</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Suspended">Suspended</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-table-container">
+                        <table class="admin-data-table">
+                            <thead>
+                                <tr>
+                                    <th>NAME</th>
+                                    <th>EMAIL</th>
+                                    <th>ROLE</th>
+                                    <th>STATUS</th>
+                                    <th>LAST LOGIN</th>
+                                    <th>CREATED</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: #64748b;">Loading admin users...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -1494,6 +1539,66 @@
                 <button class="admin-btn admin-btn-secondary" onclick="closeBackupScheduleModal()">Cancel</button>
                 <button class="admin-btn admin-btn-primary" onclick="saveBackupSchedule()">💾 Save Schedule</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit User Modal -->
+    <div id="userModal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2 id="userModalTitle">Add Admin User</h2>
+                <button class="admin-modal-close" onclick="closeUserModal()">✕</button>
+            </div>
+            <form id="userForm" class="admin-form">
+                <input type="hidden" id="userId" name="id">
+                
+                <div class="admin-form-grid">
+                    <div class="admin-form-group">
+                        <label for="userFirstName">First Name *</label>
+                        <input type="text" id="userFirstName" name="first_name" required>
+                    </div>
+                    <div class="admin-form-group">
+                        <label for="userLastName">Last Name *</label>
+                        <input type="text" id="userLastName" name="last_name" required>
+                    </div>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="userEmail">Email Address *</label>
+                    <input type="email" id="userEmail" name="email" required>
+                </div>
+                
+                <div class="admin-form-grid">
+                    <div class="admin-form-group">
+                        <label for="userRole">Role *</label>
+                        <select id="userRole" name="role" required>
+                            <option value="Admin">Admin</option>
+                            <option value="Moderator">Moderator</option>
+                            <option value="Staff">Staff</option>
+                            <option value="Super Admin">Super Admin</option>
+                        </select>
+                    </div>
+                    <div class="admin-form-group">
+                        <label for="userStatus">Status *</label>
+                        <select id="userStatus" name="status" required>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="passwordSection" class="admin-form-group">
+                    <label for="userPassword">Password</label>
+                    <input type="password" id="userPassword" name="password" placeholder="Leave blank to keep current password">
+                    <small style="color: #64748b;">Default password is "password" for new users</small>
+                </div>
+                
+                <div class="admin-modal-actions">
+                    <button type="button" class="admin-btn admin-btn-secondary" onclick="closeUserModal()">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary" id="userSubmitBtn">Add User</button>
+                </div>
+            </form>
         </div>
     </div>
 
